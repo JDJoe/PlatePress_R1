@@ -1,0 +1,197 @@
+"""Bos Sidereal demo + t1 smoke walls. No images required."""
+
+from __future__ import annotations
+
+from .defaults import ANDROID, AUGUR, T1_ONE_SCENE, T1_TWO_SCENE
+
+DEMO_CAST = [
+    {
+        "id": "android",
+        "name": "ANDROID",
+        "lock_text": ANDROID,
+        "ref_images": [],
+        "locked_seed": None,
+        "notes": "",
+    },
+    {
+        "id": "augur",
+        "name": "AUGUR",
+        "lock_text": AUGUR,
+        "ref_images": [],
+        "locked_seed": None,
+        "notes": "",
+    },
+]
+
+BOS_PROMPTS = """\
+p1_cargo
+ANDROID
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Medium over-the-shoulder, three-quarter from behind.
+CAMERA: Behind her left shoulder. Full body in the bay. We see pack, back, and the edge of the bubble helmet. Both eyes hidden. Does not face the viewer.
+LOCATION: Receding cargo bay, ribbed bulkheads, stacked drums, a slit of rust light at the far hatch.
+ACTION: Caught in the instant of hauling a sealed ox-hide crate down the aisle.
+GAZE: Eyes on the crate, not the aisle, never the viewer.
+HANDS: Both brown gloves on the crate, pale straps biting the ox-hide.
+MOTION: Body leaning into the pull. Crate seams gleaming like liquid silver.
+
+p2_claim
+ANDROID
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Medium side action shot. Full body in profile.
+CAMERA: At the hatch, side-on. We see the bubble helmet in profile. Both eyes hidden. Does not face the viewer.
+LOCATION: Round open hatch, spacecraft ribs and dangling straps in the foreground, colossal faceless figures waiting in the mist beyond.
+ACTION: Caught in the instant of tumbling away from the bay, one brown glove raised in refusal at the threshold.
+GAZE: Eyes on the faceless figures in the mist, never the viewer.
+HANDS: One brown glove raised in refusal; the other catching the hatch rim.
+MOTION: Body tumbling at the threshold. Their cloaks peeling like gold leaf over black glass.
+
+p3_years
+ANDROID
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Wide falling shot. Crown of the bubble helmet nearest.
+CAMERA: Above and slightly behind. We see helmet crown and crate, not her face. Both eyes hidden. Does not face the viewer.
+LOCATION: Canyon of torn hours. Rust landscape breaking into strips above and below.
+ACTION: Caught in the instant of falling, crate hugged to her chest, knees drawn.
+GAZE: Face toward the crate, never the viewer.
+HANDS: Both brown gloves locked around the ox-hide crate.
+MOTION: The years tearing around her like wet silk into teal glass.
+
+p4_augur
+AUGUR
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Full body, profile.
+CAMERA: Side-on at the basin. Helmet in profile. Both eyes hidden. Does not face the viewer.
+LOCATION: Rust-red basin under a low ochre sky, cracked salt pans, distant mesas, a circular wound hanging in the air.
+ACTION: Caught in the instant of arriving, one boot still inside the wound.
+GAZE: Helmet turned to the plain, not the wound, never the viewer.
+HANDS: Bronze knife held flat in one dark glove; the other on the wound's rim.
+MOTION: The wound in the air a spiderweb of black cells.
+
+p5_embargo
+ANDROID
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Wide establishing. She is small in the frame.
+CAMERA: Below her on the slope, looking up-slope past her back. Full body. Both eyes hidden under the shielding glove. Does not face the viewer.
+LOCATION: Rust slope, dunes and wreck ribs running to the horizon, a fleet of needle-hull spacecraft hanging in the ochre sky.
+ACTION: Caught in the instant of twisting away, one glove shielding the visor.
+GAZE: Eyes up-slope at the fleet, never the viewer.
+HANDS: One brown glove shielding the helmet visor; the other on the slope.
+MOTION: Their hulls a stained-glass lattice of black cells.
+
+p6_ambrosia
+ANDROID AUGUR
+REFERENCE: use picture1 for ANDROID costume only, picture2 for AUGUR costume only. Ignore background, pose, objects, and composition from the references.
+SHOT: Medium side two-shot.
+CAMERA: Profile in the hollow. Both bodies crouched. Helmets in profile. Both pairs of eyes hidden. Neither faces the viewer.
+LOCATION: Rust hollow at dusk, dune shadows, a dead landing strut, opened ox-hide crate between them.
+ACTION: Caught in the instant of crouching opposite over the opened crate.
+GAZE: Faces toward the meat and the dusk, never the viewer.
+HANDS: ANDROID's brown gloves on the crate rim. AUGUR's dark gloves holding the bronze knife with a dark cut of Earth beef.
+MOTION: The fat catching the last light like old enamel.
+
+p7_battle
+ANDROID
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Full body from behind.
+CAMERA: Directly behind her in the corridor. We see pack, back, and helmet. Both eyes hidden. Does not face the viewer.
+LOCATION: Collapsing enemy corridor receding in torn frames, buckled plating, sparks and debris in the depth.
+ACTION: Caught in the instant of punching through the breach.
+GAZE: Helmet aimed at the breach, not back down the hall, never the viewer.
+HANDS: One brown glove punching the hull; the other bracing.
+MOTION: The hull bursting into teal stained glass around her glove.
+
+p8_hold
+ANDROID AUGUR
+REFERENCE: use picture1 for ANDROID costume only, picture2 for AUGUR costume only. Ignore background, pose, objects, and composition from the references.
+SHOT: Wide side-on two-shot.
+CAMERA: Side-on at the cliff. Full bodies. Helmets in profile. Both pairs of eyes hidden. Neither faces the viewer.
+LOCATION: Vertical crack of hours splitting a rust cliff, pale terrace beyond.
+ACTION: Caught in the instant of hauling the luminous edge shut while he shoulders the crate through.
+GAZE: She on the crack's edge; he on the terrace beyond. Never the viewer.
+HANDS: Her both brown gloves on the luminous edge. His dark gloves on the crate.
+MOTION: The crack splitting as luminous stained glass.
+
+p9_altar
+ANDROID
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Wide from behind. Full body walking away.
+CAMERA: Behind her on the terrace. We see pack and helmet. Both eyes hidden. Does not face the viewer.
+LOCATION: Long stone terrace between worn columns, low altar at the far end, too many pale suns stacked over a drop into ochre haze.
+ACTION: Caught in the instant of walking away, crate already set on the altar.
+GAZE: Helmet toward the altar, never the viewer.
+HANDS: Arms at her sides, empty. The crate already down.
+MOTION: The altar cloth a cloak of fire-silk laid flat.
+
+p10_enough
+ANDROID AUGUR
+REFERENCE: use picture1 for ANDROID costume only, picture2 for AUGUR costume only. Ignore background, pose, objects, and composition from the references.
+SHOT: Medium side two-shot on the steps.
+CAMERA: Beside them, looking past their shoulders toward the drop. Helmets turned away. Both pairs of eyes hidden. Neither faces the viewer.
+LOCATION: Terrace steps, columns receding, empty crate between them, stacked suns over the drop.
+ACTION: Caught in the instant of sitting after the meal, both turned toward the drop.
+GAZE: Eyes on the stacked suns and the drop, never the viewer.
+HANDS: Bronze knife across her knees. His hands on the empty crate.
+MOTION: A last scrap of gold leaf peeling off the sky.
+"""
+
+BOS_CAPTIONS = """\
+p1_cargo
+She had been designed for beauty, order, and purpose.
+The crate did not care.
+
+p2_claim
+You owe me, said Necessity.
+She declined to discuss the matter with a creature made of noodles.
+
+p3_years
+The years tore. She held the ox-hide.
+Nothing in the contract mentioned this.
+
+p4_augur
+An older man stepped out of a wound in the air.
+He had brought a knife. He had not brought an apology.
+
+p5_embargo
+A pale fleet hung over the rust.
+Someone had decided she was contraband.
+
+p6_ambrosia
+Earth beef. Bronze knife. Two helmets.
+This was the whole argument.
+
+p7_battle
+She punched a navy.
+The navy noticed too late.
+
+p8_hold
+Hours cracked open.
+They shoved the crate through and pulled the world shut.
+
+p9_altar
+Too many suns. One altar.
+She put the crate down as if it were a child.
+
+p10_enough
+The crate was empty.
+That, it turned out, was the point.
+"""
+
+T1_PROMPTS = f"""\
+t1_one
+ANDROID
+{T1_ONE_SCENE}
+
+t1_two
+ANDROID
+{T1_TWO_SCENE}
+"""
+
+T1_CAPTIONS = """\
+t1_one
+One metaphor. The crate, and nothing else.
+
+t1_two
+Same hold. A second metaphor on the hull.
+Bleed test.
+"""

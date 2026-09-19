@@ -1,0 +1,17 @@
+# PLATEPRESS HOWTO
+
+p01_settings
+CAP_B: Settings
+NS:Vex:Style examples. Pick the one that makes me look expensive. Then leave sampler alone.
+
+p02_cast
+CAP_B: Cast
+NS:Vex:CHAR1. Short box. Face, skin, horns, tail. If you put my ass in Cast it will follow us to the courthouse.
+
+p03_book
+CAP_B: Book
+NS:Vex:Slugs up top. Captions under. This is where you admit the teacher is hot. Be brief.
+
+p04_queue
+CAP_B: Queue
+NS:Vex:Lots of tiny pictures of me wasting an afternoon teaching you. v02 is the job.

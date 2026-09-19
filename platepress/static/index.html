@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plate Press</title>
+  <link rel="stylesheet" href="/static/style.css?v=22" />
+</head>
+<body>
+  <header>
+    <h1>Plate Press</h1>
+    <p>local ComfyUI picture-novel press</p>
+    <p class="tiny" id="current-book"></p>
+  </header>
+  <div id="banner"></div>
+  <nav>
+    <button data-view="settings" class="on">Settings</button>
+    <button data-view="cast">Cast</button>
+    <button data-view="book">Book</button>
+    <button data-view="queue">Queue / Letter</button>
+    <button data-view="help">Help</button>
+  </nav>
+  <main>
+    <section id="view-settings" class="view on">
+      <h2 data-book-heading="Open book"></h2>
+      <p class="tiny">Ink, layout, and LoRA are shared. Cast, story, and plates belong to the open book below.</p>
+      <h3>Style examples</h3>
+      <p class="tiny">The card is the mode. Bos: one image per slug (a slug may still split if it contains left pane / right pane). Two-pane comic: consecutive slugs share one image. Click fills ink, layout, and negatives. World closer stays empty on Bos; two-pane fills the pane closer.</p>
+      <div id="examples" class="examples"></div>
+      <input type="hidden" id="layout" />
+
+      <label>Ink (STYLE)</label>
+      <textarea id="style"></textarea>
+      <label>Layout line</label>
+      <textarea id="layout_text" style="min-height:4rem"></textarea>
+
+      <label>World closer (TAIL)</label>
+      <textarea id="tail" style="min-height:4rem"></textarea>
+      <p class="tiny">Empty on Bos. Two-pane fills the pane closer. Prepended only if this box has text.</p>
+      <label>NEG</label>
+      <textarea id="neg"></textarea>
+
+      <h3>Model and LoRAs</h3>
+      <p class="tiny">These swap files inside the V3 graph. Do not export a new API workflow. CLIP and VAE stay as they are. The diffusion model must be <strong>Krea 2</strong>.</p>
+      <button type="button" class="act" id="scan-weights">Load lists from Comfy</button>
+      <p class="tiny">Uses the names UNETLoader actually accepts. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names; we do not follow them. Folders below are only a fallback if Comfy is down.</p>
+      <label>Diffusion models folder (fallback)</label>
+      <input id="models_dir" type="text" placeholder="~/ComfyUI/models/diffusion_models" />
+      <label>LoRAs folder (fallback)</label>
+      <input id="loras_dir" type="text" placeholder="~/ComfyUI/models/loras" />
+      <label>Diffusion model</label>
+      <input id="unet_name" type="text" list="unet-list" />
+      <datalist id="unet-list"></datalist>
+      <p class="tiny warn-note" id="unet-warn">Must be a Krea 2 UNET. Pick the exact Comfy name (e.g. <code>KREA2/krea2_turbo_bf16.safetensors</code>). Bare filenames fail. This app does not download models.</p>
+      <p class="tiny">LoRAs (up to 4, rgthree stack). First slot is the style LoRA.</p>
+      <div id="lora-stack"></div>
+      <button type="button" class="act ghost" id="add-lora">Add LoRA</button>
+      <datalist id="lora-list"></datalist>
+
+      <label>Assembled recipe (preview)</label>
+      <div id="assemble-preview" class="assemble-preview"></div>
+
+      <button class="act" id="save-settings">Save settings</button>
+      <button class="act ghost" id="test-comfy">Test connection</button>
+
+      <details>
+        <summary>Connection and sampler</summary>
+        <div class="row">
+          <div>
+            <label>Comfy host</label>
+            <input id="host" type="text" />
+          </div>
+          <div>
+            <label>Comfy port</label>
+            <input id="port" type="number" />
+          </div>
+        </div>
+        <label>Text workflow JSON</label>
+        <input id="workflow_text" type="text" />
+        <label>Ref workflow JSON</label>
+        <input id="workflow_ref" type="text" />
+        <div class="row">
+          <div>
+            <label>Images per plate</label>
+            <input id="images_per_plate" type="number" min="1" max="8" />
+          </div>
+          <div>
+            <label>Output root</label>
+            <input id="output_root" type="text" />
+          </div>
+        </div>
+        <div class="row">
+          <div><label>steps</label><input id="steps" type="number" /></div>
+          <div><label>CFG</label><input id="cfg" type="number" step="0.1" /></div>
+          <div><label>sampler</label><input id="sampler_name" type="text" /></div>
+          <div><label>scheduler</label><input id="scheduler" type="text" /></div>
+        </div>
+      </details>
+
+      <h3 style="margin-top:1.4rem">Books</h3>
+      <p class="tiny">Each book is a folder. The open one is marked. Delete removes the folder (plates, stills, story, cast).</p>
+      <div id="books"></div>
+      <button type="button" class="act ghost js-new-book">New book</button>
+    </section>
+
+    <section id="view-cast" class="view">
+      <h2 data-book-heading="Cast"></h2>
+      <p class="tiny">This roster belongs only to the open book. ANDROID here is not ANDROID in another book. Load demo cast replaces <em>this</em> book’s characters, not a global list.</p>
+      <label>Cutout sentence</label>
+      <textarea id="ref_cutout_text" style="min-height:4rem"></textarea>
+      <p class="tiny">Sent only for characters with Cutout checked, and only when that plate’s Image column is on.</p>
+      <button class="act" id="demo-cast">Load demo cast</button>
+      <div id="cast"></div>
+      <button class="act ghost" id="add-char">Add character</button>
+    </section>
+
+    <section id="view-book" class="view">
+      <h2 data-book-heading="Book"></h2>
+      <button type="button" class="act js-new-book">New book</button>
+      <p class="tiny">Starts a clean folder: empty story, empty cast, no plates.</p>
+      <label>Book title</label>
+      <input id="title" type="text" />
+      <p class="tiny" id="book-id"></p>
+      <label>API workflow</label>
+      <div class="row">
+        <div>
+          <select id="book-workflow"></select>
+        </div>
+        <div style="max-width:8rem">
+          <label>&nbsp;</label>
+          <button type="button" class="act ghost" id="refresh-workflows">Refresh list</button>
+        </div>
+      </div>
+      <p class="tiny">This book only. Default is Settings <code>default_comfyUI-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs still apply. The save prefix is still filled so Queue can find files.</p>
+      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>CHAR1 is PingPong</code> stays as written — write KEEP / REFERENCE yourself. After Parse, Text, Image, and letter start off. letter sends captions and balloons onto the plate. Do not paste aethernouveau here. Say spacecraft, not ship. Do not write <code>CHARACTER1</code>.</p>
+      <p class="tiny">Plate template — copy into the wall:</p>
+      <pre id="plate-template" class="plate-template">p01_slug
+CHAR1 is PingPong
+KEEP the same woman from image1, her name is PingPong.
+REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
+SHOT: Medium side action shot.
+CAMERA: Where we stand, where we look. Full body / over the shoulder / profile. Both eyes hidden. Does not face the viewer.
+LOCATION: Place, ground, weather or interior. Named objects.
+ACTION: Caught in the instant of [verb].
+GAZE: Eyes on a named thing in the frame, never the viewer.
+HANDS: What both hands are doing.
+MOTION: Body, boots, pack, debris, the beat.</pre>
+      <button type="button" class="act ghost" id="copy-plate-template">Copy plate template</button>
+      <label>Prompts / story</label>
+      <textarea id="prompts_raw" class="tall" placeholder="p01_slug&#10;CHAR1 is PingPong&#10;KEEP the same woman from image1, her name is PingPong.&#10;REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.&#10;SHOT:&#10;CAMERA:&#10;LOCATION:&#10;ACTION: Caught in the instant of &#10;GAZE:&#10;HANDS:&#10;MOTION:"></textarea>
+      <label>Captions</label>
+      <textarea id="captions_raw" class="tall" placeholder="p02_treasure&#10;CAP_B: The capsules were beautiful, warm, and completely unmarked.&#10;NS: Vex: Oh. There you are.&#10;NSV: Celine: Then why the armed guard?"></textarea>
+      <p class="tiny">Same slugs as the story. Check the <strong>letter</strong> column so Generate paints them on the plate (same size, no bar underneath). Untagged lines → bottom box (<code>CAP_B</code>). <code>CAP_T</code> top box. Balloons: <code>NS</code> <code>NSV</code> <code>NS2</code> <code>OFFP</code> <code>YELL</code> <code>FADE</code> <code>WHISP</code> <code>ANN</code> <code>THINK</code> <code>DREAM</code> <code>DARK</code>. Place: <code>NS_6: PILOT2 suggested selling them.</code> Grid <code>1 2 / 3 4 / 5 6</code>. Speaker: <code>NS_2: PILOT1: line</code>.</p>
+      <button class="act" id="save-book">Save book</button>
+      <button class="act" id="parse">Parse</button>
+      <button class="act ghost" id="demo-bos">Load Bos Sidereal demo</button>
+      <button class="act ghost" id="demo-t1">Load t1 smoke</button>
+      <button class="act ghost" id="copy-llm">Copy instructions for your LLM</button>
+      <label class="tiny"><input type="checkbox" id="skip_done" checked /> Generate missing: skip plates that already have images</label>
+      <button class="act" id="gen-missing">Generate missing</button>
+      <button class="act" id="gen-all">Generate all</button>
+      <button class="act" id="gen-sel">Generate selected</button>
+      <p class="tiny">After Parse, the prompt column is the assembled text Comfy will get. Click it (or Copy) for the full prompt — the hover hint cannot be copied.</p>
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="slug-all" title="Select all slugs" checked /></th>
+            <th><input type="checkbox" id="text-all" title="Use text on all slugs" /> text</th>
+            <th><input type="checkbox" id="image-all" title="Use still on all slugs" /> image</th>
+            <th><input type="checkbox" id="letter-all" title="Send captions and balloons to Comfy" /> letter</th>
+            <th>slug</th><th>cast</th><th>metaphor</th><th>warn</th><th>prompt</th>
+          </tr>
+        </thead>
+        <tbody id="preview"></tbody>
+      </table>
+    </section>
+
+    <section id="view-queue" class="view">
+      <h2 data-book-heading="Queue"></h2>
+      <p class="tiny" id="qstatus"></p>
+      <button class="act" id="letter-all-btn">Letter all</button>
+      <button class="act" id="publish">Publish</button>
+      <button class="act ghost" id="export">Export pack</button>
+      <button class="act ghost" id="open-folder">Open folder</button>
+      <button class="act ghost" id="del-earlier">Delete earlier plates</button>
+      <button class="act ghost" id="del-all-plates">Delete all plates in this book</button>
+      <div id="thumbs"></div>
+    </section>
+    <div id="lightbox" hidden>
+      <button type="button" class="act ghost" id="lightbox-close">Close</button>
+      <img id="lightbox-img" alt="" />
+      <p id="lightbox-cap" class="tiny"></p>
+    </div>
+
+    <section id="view-help" class="view help">
+      <h2>Help</h2>
+      <p>One book at a time. ComfyUI must already be running. This app does not download the checkpoint.</p>
+
+      <h3>Loop</h3>
+      <ol>
+        <li>Settings — pick a style card, Test connection.</li>
+        <li>Cast — this book’s people. Optional stills.</li>
+        <li>Book — paste the labeled shot wall. Parse. Generate.</li>
+        <li>Queue — watch the plates. Captions and balloons are in the picture when you Generated with the letter column on. Plate size does not change.</li>
+      </ol>
+
+      <h3>Settings</h3>
+      <ul>
+        <li>Ink, layout, closer, NEG, UNET, LoRAs live on the <strong>open book</strong>. Comfy host, port, and model folders stay in shared Settings. Default graph: <code>default_comfyUI-API.json</code>. NEG is written only if that graph has a CLIP negative node; the shipped default keeps its diptych negative.</li>
+        <li><strong>Test connection</strong> first.</li>
+        <li><strong>Style cards are the mode.</strong> There is no Plate layout radio.</li>
+        <li><strong>Bos, one plate</strong>: each slug is one image. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
+        <li><strong>Two-pane comic</strong>: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.</li>
+        <li>Click a card to fill ink, layout line, and matching negatives, and save Settings. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.</li>
+        <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text (empty on Bos).</li>
+        <li>On Book, each slug has <strong>Text</strong>, <strong>Image</strong>, and <strong>letter</strong>. All start off. Text inserts the Cast lock. Image sends the still. letter sends captions and balloons to Comfy on the plate (same size, no bar under the image). Header checkboxes select or clear a column.</li>
+        <li><strong>Model and LoRAs</strong> — shared Settings. <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Not saved on the book.</li>
+        <li><strong>API workflow</strong> is per book. Default is Settings <code>default_comfyUI-API.json</code>. Open the default in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, put the JSON in this book’s <code>workflows/</code> folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.</li>
+        <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
+      </ul>
+
+      <h3>Cast</h3>
+      <ul>
+        <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
+        <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
+        <li>Cast <strong>Name</strong> is the wall token (<code>ROOM</code>, <code>ANYTHING</code>, <code>CHAR1</code>). Text on: the word becomes the lock. <strong>Image</strong> on: stills are <code>image1</code>, <code>image2</code>, <code>image3</code> in token order. <code>CHAR1</code> / <code>PILOT1</code> still mean first card. <code>Anna</code> after <code>is</code> is writer text. Do not write <code>CHARACTER1</code>.</li>
+        <li>Lock is face + suit + pack. Per-slug Text on Book inserts it. Per-slug Image sends the still. Cutout is per character on this page and is sent when Image is on.</li>
+        <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
+        <li>0–3 local stills per card. One body. Frontal portraits make the figure find the camera.</li>
+        <li><strong>Lock seed</strong> on a thumb in Queue, then later plates of that character can reuse it.</li>
+        <li><strong>Load demo cast</strong> replaces this book’s roster, not a global list.</li>
+      </ul>
+
+      <h3>Book</h3>
+      <p>Story wall (copy the template on the Book page):</p>
+      <pre>p01_slug
+CHAR1 is PingPong
+KEEP the same woman from image1, her name is PingPong.
+REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
+SHOT: Medium side action shot.
+CAMERA: Where we stand, where we look. Both eyes hidden. Does not face the viewer.
+LOCATION: Place, ground, weather or interior.
+ACTION: Caught in the instant of [verb].
+GAZE: Eyes on a named thing in the frame, never the viewer.
+HANDS: What both hands are doing.
+MOTION: Body, boots, pack, debris, the beat.</pre>
+      <ul>
+        <li>Slug on its own line. Cast name is the token (<code>ANYTHING</code>, <code>ROOM</code>, <code>CHAR1</code>). <strong>Text</strong>: token becomes the lock, <code>is Anna</code> stays. <strong>Image</strong>: stills are <code>image1</code>, <code>image2</code>, <code>image3</code> in token order. <strong>Both</strong>: lock plus those stills. Write KEEP / REFERENCE yourself.</li>
+        <li>Do not paste ink, closer, sampler, or <code>aethernouveau</code> here. The app prepends ink and the layout line (and closer if that box is not empty).</li>
+        <li>Hide the eyes. Working verb: <strong>caught in the instant of [verb]</strong>. Never call a person a pale shape, silhouette, or receding figure — Krea melts the body. CAMERA is empty air, not a third person at the edge.</li>
+        <li>Captions go to Comfy when the <strong>letter</strong> column is on. Untagged lines become a bottom box on the plate (<code>CAP_B</code>). <code>CAP_T</code> is the top box. Place a balloon: <code>NS_6: line</code> — grid <code>1 2 / 3 4 / 5 6</code>. The plate size does not grow.</li>
+        <li>The default book is the demo. It cannot be deleted from the UI.</li>
+        <li><strong>Parse</strong> before generate. Slug checkboxes stay as you left them. Click a prompt (or Copy) to copy the full assembled text Comfy will get.</li>
+        <li>Header checkboxes: generate-select, Text column, Image column.</li>
+        <li><strong>Generate selected</strong> uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.</li>
+        <li>Assembler: <strong>ink, layout line, closer (if any), Book wall</strong>. No KEEP line is added.</li>
+        <li>Two-pane comic: one checked row uses the next slug as the right pane. Write a full shot on each slug.</li>
+        <li>Default: 2 random seeds per plate.</li>
+        <li><strong>Copy instructions for your LLM</strong> copies the sheet plus current locks (identity notes, not prompt prefix).</li>
+      </ul>
+      <p>Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Hang a metaphor on a named object.</p>
+
+      <h3>Refs</h3>
+      <ul>
+        <li>Per slug <strong>Image</strong> column. First token → <code>image1</code>, second → <code>image2</code>, third → <code>image3</code>.</li>
+        <li>Text off + Image on: the wall still says <code>CHAR1 is Anna</code> or <code>ANYTHING is Anna</code>. Stills are <code>image1</code>…<code>image3</code>. Write KEEP/REFERENCE yourself.</li>
+        <li>Frontal “look at me” stills clone that pose. Prefer a full-body costume still.</li>
+        <li>Cutout is per Cast card. Prefer writing REFERENCE on the wall.</li>
+      </ul>
+
+      <h3>Queue / Letter</h3>
+      <ul>
+        <li>This page shows only the open book. Click a thumb to view it larger (Esc or click the dark to close).</li>
+        <li>File names: <code>P01-wreck-v01-same-clouds.png</code>; two-pane pair <code>P01-cargo-P02-claim-v01-bos.png</code>; second seed <code>P01-wreck-v01-same-clouds-2.png</code>; lettered <code>P01-wreck-v01-same-clouds-lettered.png</code>. Each Generate is a new version, newest grid on top. Files sort by plate. No seed in the name.</li>
+        <li>Thumbs land in the book <code>plates/</code> folder.</li>
+        <li><strong>Letter all</strong> / <strong>Letter this</strong> is optional extra drawing on a copy. The usual path is Generate with the letter column on.</li>
+        <li><strong>Export pack</strong> writes lettered PNGs, <code>captions/</code>, <code>assembled_prompts.txt</code>, <code>seeds.json</code>.</li>
+        <li>Reroll = new seed from the current Book wall (saves first), not the old file. New version.</li>
+        <li>Pick thumbs and <strong>Publish</strong> moves them to <code>01_BookName_Published</code> with a snapshot of ink, LoRAs, story, and captions. <strong>Load published</strong> restores that snapshot. Missing UNET/LoRA names warn; the rest still loads. <strong>Delete all plates</strong> does not touch those folders.</li>
+        <li>Delete one file, earlier versions, or all plates in this book (story/stills stay). Published folders stay.</li>
+      </ul>
+
+      <h3>House style</h3>
+      <ul>
+        <li>No text, logos, balloons, or “comic panel with text box” in the sampler.</li>
+        <li>No NASA, EMU, flags, patches — those pull a different suit.</li>
+        <li>One character per plate unless both bodies must appear.</li>
+        <li>Do not change identity words mid-book.</li>
+        <li>Vessels are spacecraft. The word ship (and spaceship) makes Krea paint boats with sails.</li>
+      </ul>
+    </section>
+  </main>
+  <script src="/static/app.js?v=56"></script>
+</body>
+</html>

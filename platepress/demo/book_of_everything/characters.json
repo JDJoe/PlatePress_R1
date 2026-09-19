@@ -1,0 +1,24 @@
+[
+  {
+    "id": "cc066ceb9",
+    "name": "CHAR1",
+    "lock_text": "She is in her late twenties and looks like a supermodel. She has a perfect smooth emerald green skin, wide gold-amber eyes, small pointed ears, small fangs, two ridged horns curving back, long black hair, feminine hourglass body, thin waist, narrow hips, long supermodel legs, thin agile tail.",
+    "ref_images": [],
+    "ref_active": null,
+    "ref_ignored": [],
+    "locked_seed": null,
+    "notes": "",
+    "ref_slots": []
+  },
+  {
+    "id": "c8c966c81",
+    "name": "CHAR2",
+    "lock_text": "",
+    "ref_images": [],
+    "ref_active": null,
+    "ref_ignored": [],
+    "locked_seed": null,
+    "notes": "",
+    "ref_slots": []
+  }
+]

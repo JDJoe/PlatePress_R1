@@ -1,0 +1,733 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from platepress.app import app
+
+
+def test_portable_paths_are_repo_relative():
+    from platepress import store
+
+    rel = store.portable_path(store.ROOT / store.DEFAULT_API_WORKFLOW)
+    assert rel == store.DEFAULT_API_WORKFLOW
+    got = store.resolve_user_path(store.DEFAULT_API_WORKFLOW)
+    assert got == (store.ROOT / store.DEFAULT_API_WORKFLOW).resolve()
+    s = store.default_settings()
+    assert not Path(s["workflow_text"]).is_absolute()
+    assert not Path(s["output_root"]).is_absolute()
+    assert "/home/" not in s["workflow_text"]
+    assert "/home/" not in s["output_root"]
+    assert s["ref_cutout"] is False
+    assert s["tail"] == ""
+    assert s["workflow_text"] == store.DEFAULT_API_WORKFLOW
+    assert s["workflow_ref"] == store.DEFAULT_API_WORKFLOW
+    assert "krea2" in (s.get("unet_name") or "").lower()
+    assert s["loras"] == []
+    assert not s.get("lora_name")
+    from platepress.defaults import EXAMPLES
+    assert EXAMPLES["bos"]["tail"] == ""
+    assert "own scene" in (EXAMPLES["split"]["tail"] or "").lower()
+    assert "cutouts" in (s.get("ref_cutout_text") or "").lower()
+
+
+def test_ensure_demo_book_seeds_missing_default(tmp_path):
+    from platepress import store
+
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.ensure_demo_book(s)
+    dest = tmp_path / "books" / store.DEMO_BOOK_ID
+    assert (dest / "book.json").exists()
+    wall = (dest / "prompts_raw.txt").read_text(encoding="utf-8")
+    assert wall.strip().startswith("p01_settings") or "p01_settings" in wall
+    chars = json.loads((dest / "characters.json").read_text(encoding="utf-8"))
+    assert "CHAR1" in {c["name"] for c in chars}
+    assert not any("/home/" in json.dumps(c) for c in chars)
+    store.ensure_demo_book(s)
+    # second call does not clobber
+    (dest / "prompts_raw.txt").write_text("keep-me", encoding="utf-8")
+    store.ensure_demo_book(s)
+    assert (dest / "prompts_raw.txt").read_text(encoding="utf-8") == "keep-me"
+
+
+def test_blank_style_does_not_wipe_ink(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.defaults import STYLE
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    s["style"] = "   "
+    store.save_settings(s, tmp_path / "settings.json")
+    loaded = store.load_settings(tmp_path / "settings.json")
+    assert loaded["style"].strip() == STYLE.strip()
+    client = TestClient(app)
+    r = client.post("/api/settings", json={"style": "", "layout_text": "", "neg": ""})
+    assert r.status_code == 200
+    assert r.json()["style"].strip() == STYLE.strip()
+    assert "watercolor" in r.json()["style"].lower()
+
+
+def test_index_and_parse_t1(tmp_path, monkeypatch):
+    from platepress import store
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    # app load_settings uses DEFAULT_SETTINGS_PATH — patched.
+    client = TestClient(app)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "Plate Press" in r.text
+    r = client.post("/api/demo/t1")
+    assert r.status_code == 200
+    body = r.json()
+    slugs = [p["slug"] for p in body["plates"]]
+    assert slugs == ["t1_one", "t1_two"]
+    assert body["plates"][0]["risky_twoshot"] is False
+    assert "watercolor" in body["plates"][0]["assembled"].lower()
+    r = client.post("/api/demo/bos")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["plates"]) == 10
+    assert all(p["use_text"] is False for p in body["plates"])
+    assert all(p["use_image"] is False for p in body["plates"])
+    assert all(p.get("use_letter") is False for p in body["plates"])
+    r = client.post("/api/parse", json={"slug_opts": {
+        p["slug"]: {"use_text": True, "use_image": False} for p in body["plates"]
+    }})
+    assert r.status_code == 200
+    assert any(p["risky_twoshot"] for p in r.json()["plates"])
+    r = client.get("/api/llm-sheet")
+    assert "CHARACTER LOCKS" in r.json()["text"]
+    assert "ANDROID" in r.json()["text"]
+    r = client.post("/api/character/delete", json={"id": "augur", "name": "AUGUR"})
+    assert r.status_code == 200, r.text
+    names = [c["name"] for c in r.json()["book"]["characters"]]
+    assert "AUGUR" not in names
+    assert "ANDROID" in names
+    r = client.post("/api/character/add")
+    assert r.status_code == 200
+    added = r.json()["book"]["characters"][-1]["name"]
+    assert added != "ANDROID"
+    r = client.post(
+        "/api/book",
+        json={"characters": [
+            {"id": "a", "name": "ANDROID", "lock_text": "x", "ref_images": []},
+            {"id": "b", "name": "ANDROID", "lock_text": "y", "ref_images": []},
+        ]},
+    )
+    assert r.status_code == 400
+
+
+def test_delete_plates_and_book(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.app import app as flaskish
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(flaskish)
+    d = tmp_path / "books" / store.DEMO_BOOK_ID / "plates"
+    d.mkdir(parents=True)
+    (d / "p1_cargo_1.png").write_bytes(b"x")
+    r = client.post("/api/plates/delete", json={"scope": "all"})
+    assert r.status_code == 400
+    r = client.post("/api/plates/delete", json={"confirm": True, "scope": "all"})
+    assert r.status_code == 200
+    assert r.json()["deleted"] >= 1
+    assert not (d / "p1_cargo_1.png").exists()
+    r = client.post("/api/book/new", json={"title": "Scratch"})
+    assert r.status_code == 200
+    nid = r.json()["book"]["id"]
+    r = client.post("/api/book/delete", json={"id": nid})
+    assert r.status_code == 400
+    r = client.post("/api/book/delete", json={"confirm": True, "id": nid})
+    assert r.status_code == 200
+    ids = [b["id"] for b in r.json()["books"]]
+    assert nid not in ids
+    r = client.post("/api/book/delete", json={"confirm": True, "id": store.DEMO_BOOK_ID})
+    assert r.status_code == 400
+    assert (tmp_path / "books" / store.DEMO_BOOK_ID).is_dir()
+
+
+def test_books_list_keeps_disk_folders_after_restart(tmp_path, monkeypatch):
+    from platepress import store
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    root = tmp_path / "books"
+    s["output_root"] = str(root)
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(app)
+    r = client.post("/api/book/new", json={"title": "Same Clouds", "id": "same_clouds"})
+    assert r.status_code == 200
+    assert r.json()["book"]["id"] == "same_clouds"
+    dropped = root / "from_disk"
+    dropped.mkdir()
+    (dropped / "prompts_raw.txt").write_text("p1_one\nscene\n", encoding="utf-8")
+    # New client = app restart; settings.json + folders on disk must still list.
+    restarted = TestClient(app)
+    r = restarted.get("/api/books")
+    assert r.status_code == 200
+    ids = [b["id"] for b in r.json()["books"]]
+    assert "same_clouds" in ids
+    assert "from_disk" in ids
+    assert store.DEMO_BOOK_ID in ids
+    assert r.json()["current"] == "same_clouds"
+
+
+def test_runs_only_current_book(tmp_path, monkeypatch):
+    from platepress import store
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    root = tmp_path / "books"
+    s["output_root"] = str(root)
+    store.save_settings(s, tmp_path / "settings.json")
+    old = root / "default" / "plates"
+    old.mkdir(parents=True)
+    (old / "p1_cargo_1.png").write_bytes(b"old")
+    client = TestClient(app)
+    r = client.post("/api/book/new", json={"title": "Scratch"})
+    assert r.status_code == 200
+    nid = r.json()["book"]["id"]
+    fresh = root / nid / "plates"
+    fresh.mkdir(parents=True, exist_ok=True)
+    (fresh / "p1_new_2.png").write_bytes(b"new")
+    r = client.get("/api/runs")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["current"] == nid
+    names = [t["name"] for t in body["thumbs"]]
+    assert names == [f"P01-new-v01-{nid}.png"]
+    assert [b["id"] for b in body["books"]] == [nid]
+    assert body["thumbs"][0]["book_id"] == nid
+    assert body["thumbs"][0]["slug"] == "p001_new"
+    assert body["thumbs"][0]["run"] == 1
+    assert body["batches"][0]["label"] == "v01"
+
+
+def test_settings_includes_layout_examples(tmp_path, monkeypatch):
+    from platepress import store
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    s["tail"] = " Single divided plate, two scenes. Environment to all four edges."
+    s["neg"] = "two panels, diptych, text"
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(app)
+    r = client.get("/api/settings")
+    assert r.status_code == 200
+    body = r.json()
+    assert "examples" in body and "bos" in body["examples"]
+    assert body["examples"]["split"]["layout"] == "split"
+    assert "vertical panes" in body["examples"]["split"]["layout_text"]
+    assert "Single divided" not in (body.get("tail") or "")
+
+
+def test_plate_name_slug_not_seed():
+    from platepress.app import _plate_slug, _seed_from_stem
+
+    assert _plate_slug("untitled_p5_embargo.png") == "p5_embargo"
+    assert _seed_from_stem("untitled_p5_embargo", "p5_embargo") is None
+    assert _seed_from_stem("untitled_p5_embargo_2", "p5_embargo") is None
+    assert _plate_slug("p5_embargo_1346841254129315.png") == "p5_embargo"
+    assert _seed_from_stem("p5_embargo_1346841254129315", "p5_embargo") == 1346841254129315
+
+
+def test_slug_keeps_extra_underscores():
+    from platepress.app import (
+        _file_stem,
+        _is_canonical_stem,
+        _plate_slug,
+        _resolve_slug,
+        _slugs_in_name,
+    )
+    class P:
+        def __init__(self, slug):
+            self.slug = slug
+
+    assert _slugs_in_name("p08_wrong_place") == ["p08_wrong_place"]
+    assert _file_stem("same_clouds", "p08_wrong_place", 1) == "P08-wrong-place-v01-same-clouds"
+    assert _plate_slug("P08-wrong-place-v01-same-clouds.png") == "p008_wrong_place"
+    assert _plate_slug("P08-wrong-place-v01-same-clouds-2.png") == "p008_wrong_place"
+    assert _plate_slug("same_clouds_v01_p008_wrong_place.png") == "p008_wrong_place"
+    assert _slugs_in_name("P08-wrong-place-P09-other-side-v03-same-clouds.png") == [
+        "p008_wrong_place",
+        "p009_other_side",
+    ]
+    assert _slugs_in_name("same_clouds_v03_p008_wrong_place_p009_other_side.png") == [
+        "p008_wrong_place",
+        "p009_other_side",
+    ]
+    assert (
+        _file_stem("same_clouds", "p008_wrong_place_p009_other_side", 3)
+        == "P08-wrong-place-P09-other-side-v03-same-clouds"
+    )
+    assert _is_canonical_stem("P08-wrong-place-v01-same-clouds", "same_clouds", "p008_wrong_place")
+    assert _is_canonical_stem("P08-wrong-place-v01-same-clouds-2", "same_clouds", "p008_wrong_place")
+    assert _is_canonical_stem("same_clouds_v01_p008_wrong_place", "same_clouds", "p008_wrong_place")
+    assert _file_stem("breakfastisinnocent", "p09A_morning", 10) == "P09A-morning-v10-breakfastisinnocent"
+    wrapped = "p09a-morning-v10-breakfastisinnocent-v01-breakfastisinnocent-v01-breakfastisinnocent"
+    assert _file_stem("breakfastisinnocent", wrapped, 1) == "P09A-morning-v10-breakfastisinnocent"
+    assert _file_stem("breakfastisinnocent", "P09A-morning-v10-breakfastisinnocent", 1) == (
+        "P09A-morning-v10-breakfastisinnocent"
+    )
+    plates = [P("p08_wrong_place"), P("p09_other_side")]
+    assert _resolve_slug("p008_wrong_place", plates) == "p08_wrong_place"
+    assert _resolve_slug("p008_wrong", plates) == "p08_wrong_place"
+
+
+def test_normalize_collapses_runaway_stem(tmp_path):
+    from platepress.app import _collapse_runaway, normalize_plate_filenames
+
+    long = (
+        "p09a-morning-v10-breakfastisinnocent"
+        + "-v01-breakfastisinnocent" * 4
+    )
+    assert _collapse_runaway(long) == "p09a-morning-v10-breakfastisinnocent"
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    (plates / f"{long}.png").write_bytes(b"x")
+    normalize_plate_filenames(tmp_path, "breakfastisinnocent")
+    names = [p.name for p in plates.iterdir()]
+    assert names == ["P09A-morning-v10-breakfastisinnocent.png"]
+    assert all(len(n) < 80 for n in names)
+
+
+def test_normalize_plate_filenames_uses_book_id(tmp_path):
+    from platepress.app import normalize_plate_filenames
+
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    (plates / "p5_embargo_1346841254129315.png").write_bytes(b"a")
+    (plates / "p5_embargo_999.png").write_bytes(b"b")
+    (plates / "untitled_p5_embargo.png").write_bytes(b"keep")
+    renamed = normalize_plate_filenames(tmp_path, "untitled")
+    names = sorted(p.name for p in plates.iterdir())
+    assert "P05-embargo-v01-untitled.png" in names
+    assert all("1346841254129315" not in n for n in names)
+    assert all(n.startswith("P05-embargo-v01-untitled") for n in names)
+    assert len(renamed) == 3
+
+
+def test_next_run_groups_regenerates(tmp_path):
+    from platepress.app import _file_stem, _next_run, _run_from_stem, normalize_plate_filenames
+
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    (plates / "default_v01_p001_cargo.png").write_bytes(b"a")
+    (plates / "default_v01_p010_enough.png").write_bytes(b"b")
+    assert _next_run(plates, "default") == 2
+    assert _file_stem("default", "p1_cargo", 2) == "P01-cargo-v02-default"
+    assert _file_stem("default", "p001_cargo_p002_claim", 4) == "P01-cargo-P02-claim-v04-default"
+    assert _run_from_stem("P01-cargo-v02-default-2", "default") == 2
+    assert _run_from_stem("default_v02_p001_cargo_2", "default") == 2
+    assert _run_from_stem("default_001_p001_cargo", "default") == 1
+    names = [
+        _file_stem("default", "p1_cargo", 1),
+        _file_stem("default", "p10_enough", 1),
+        _file_stem("default", "p1_cargo", 2),
+    ]
+    assert names == [
+        "P01-cargo-v01-default",
+        "P10-enough-v01-default",
+        "P01-cargo-v02-default",
+    ]
+    assert sorted(names) == [
+        "P01-cargo-v01-default",
+        "P01-cargo-v02-default",
+        "P10-enough-v01-default",
+    ]
+    (plates / "default_002_p001_cargo.png").write_bytes(b"legacy")
+    renamed = normalize_plate_filenames(tmp_path, "default")
+    assert any(new.name == "P01-cargo-v02-default.png" for old, new in renamed)
+
+
+def test_thumbs_include_lettered_folder(tmp_path):
+    from platepress.app import _thumbs_for_book
+
+    bid = "scratch"
+    root = tmp_path / "books"
+    plates = root / bid / "plates"
+    lettered = root / bid / "lettered"
+    plates.mkdir(parents=True)
+    lettered.mkdir()
+    (plates / f"{bid}_v01_p001_heist.png").write_bytes(b"a")
+    (lettered / f"{bid}_v01_p001_heist_lettered.png").write_bytes(b"b")
+    thumbs = _thumbs_for_book({"output_root": str(root)}, bid)
+    names = {t["name"] for t in thumbs}
+    assert f"{bid}_v01_p001_heist.png" in names
+    assert f"{bid}_v01_p001_heist_lettered.png" in names
+    let = next(t for t in thumbs if t["lettered"])
+    assert let["slug"] == "p001_heist"
+    assert let["run"] == 1
+    assert "/lettered/" in let["url"]
+
+
+def test_group_thumbs_splits_batches():
+    from platepress.app import _group_thumbs
+
+    thumbs = [
+        {"name": "p1_cargo_1.png", "stem": "p1_cargo_1", "mtime": 300, "url": "/a"},
+        {"name": "p1_cargo_2.png", "stem": "p1_cargo_2", "mtime": 290, "url": "/b"},
+        {"name": "old_1.png", "stem": "p2_claim_9", "mtime": 10, "url": "/c"},
+    ]
+    runs = [
+        {"plate_slug": "p1_cargo", "seed": 1, "batch_id": "bnew", "batch_at": "2026-09-05 21:40"},
+        {"plate_slug": "p1_cargo", "seed": 2, "batch_id": "bnew", "batch_at": "2026-09-05 21:40"},
+    ]
+    batches = _group_thumbs(thumbs, runs)
+    assert len(batches[0]["thumbs"]) == 2
+    assert any("p2_claim" in (t.get("stem") or "") for b in batches for t in b["thumbs"])
+
+
+def test_group_by_version_newest_first():
+    from platepress.app import _group_by_version
+
+    thumbs = [
+        {"name": "default_v01_p001_cargo.png", "stem": "default_v01_p001_cargo", "run": 1, "mtime": 10},
+        {"name": "default_v01_p001_cargo_2.png", "stem": "default_v01_p001_cargo_2", "run": 1, "mtime": 11},
+        {"name": "default_v02_p001_cargo.png", "stem": "default_v02_p001_cargo", "run": 2, "mtime": 20},
+        {"name": "default_v02_p010_enough.png", "stem": "default_v02_p010_enough", "run": 2, "mtime": 21},
+    ]
+    batches = _group_by_version(thumbs)
+    assert [b["label"] for b in batches] == ["v02", "v01"]
+    assert [t["name"] for t in batches[0]["thumbs"]] == [
+        "default_v02_p001_cargo.png",
+        "default_v02_p010_enough.png",
+    ]
+    assert len(batches[1]["thumbs"]) == 2
+
+
+def test_plate_slug_key_is_exact():
+    from platepress.app import _plate_slug_key
+
+    assert _plate_slug_key("book_v01_p001_cut.png") == ("p001_cut",)
+    assert _plate_slug_key("book_v01_p001_cutout.png") == ("p001_cutout",)
+    assert _plate_slug_key("book_v01_p001_cargo_p002_claim.png") == ("p001_cargo", "p002_claim")
+    assert _plate_slug_key("book_v01_p001_cut.png") != _plate_slug_key("book_v01_p001_cutout.png")
+    assert _plate_slug_key("P01-cut-v01-book.png") == ("p001_cut",)
+    assert _plate_slug_key("P01-cargo-P02-claim-v01-book.png") == ("p001_cargo", "p002_claim")
+
+
+def test_attach_run_meta_puts_seed_on_thumb():
+    from platepress.app import _attach_run_meta
+
+    thumbs = [
+        {"path": "/books/x/plates/x_v01_p001_heist.png", "name": "x_v01_p001_heist.png", "slug": "p001_heist"},
+        {"path": "/books/x/plates/x_v01_p001_heist_2.png", "name": "x_v01_p001_heist_2.png", "slug": "p001_heist"},
+    ]
+    runs = [
+        {"output_path": "/books/x/plates/x_v01_p001_heist.png", "seed": 11, "plate_slug": "p01_heist", "status": "done"},
+        {"output_path": "/books/x/plates/x_v01_p001_heist_2.png", "seed": 22, "plate_slug": "p01_heist", "status": "done"},
+    ]
+    _attach_run_meta(thumbs, runs)
+    assert thumbs[0]["seed"] == 11
+    assert thumbs[1]["seed"] == 22
+
+
+def test_delete_batch_does_not_rename_book(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.app import app as flaskish
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(flaskish)
+    r = client.post("/api/book/new", json={"title": "Scratch", "id": "scratch"})
+    assert r.status_code == 200
+    bid = r.json()["book"]["id"]
+    plates = tmp_path / "books" / bid / "plates"
+    plates.mkdir(parents=True, exist_ok=True)
+    (plates / f"{bid}_v01_p001_cut.png").write_bytes(b"a")
+    (plates / f"{bid}_v02_p001_cut.png").write_bytes(b"b")
+    r = client.post("/api/plates/delete", json={"confirm": True, "scope": "batch", "batch_id": "v01", "book_id": bid})
+    assert r.status_code == 200
+    ids = [b["id"] for b in client.get("/api/books").json()["books"]]
+    assert "v01" not in ids
+    assert bid in ids
+    assert not (plates / f"{bid}_v01_p001_cut.png").exists()
+    assert (plates / f"{bid}_v02_p001_cut.png").exists()
+
+
+def test_settings_stick_to_book_and_published_snapshot(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.defaults import STYLE
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(app)
+    r = client.post("/api/book/new", json={"title": "Alpha", "id": "alpha"})
+    assert r.status_code == 200
+    r = client.post("/api/settings", json={"style": "INK FOR ALPHA", "neg": "no boats"})
+    assert r.status_code == 200
+    assert r.json()["style"] == "INK FOR ALPHA"
+    book = json.loads((tmp_path / "books" / "alpha" / "book.json").read_text(encoding="utf-8"))
+    assert book["style"] == "INK FOR ALPHA"
+    r = client.post("/api/book/new", json={"title": "Beta", "id": "beta"})
+    assert r.status_code == 200
+    r = client.post("/api/settings", json={"style": "INK FOR BETA"})
+    assert r.json()["style"] == "INK FOR BETA"
+    r = client.post("/api/book/open", json={"id": "alpha"})
+    assert r.status_code == 200
+    r = client.get("/api/settings")
+    assert r.json()["style"] == "INK FOR ALPHA"
+    plates = tmp_path / "books" / "alpha" / "plates"
+    plates.mkdir(parents=True, exist_ok=True)
+    keep = plates / "P01-womb-v01-alpha.png"
+    keep.write_bytes(b"keep")
+    r = client.post("/api/publish", json={"paths": [str(keep)]})
+    assert r.status_code == 200
+    pub = r.json()["name"]
+    snap = json.loads((tmp_path / "books" / "alpha" / pub / "snapshot.json").read_text(encoding="utf-8"))
+    assert snap["style"] == "INK FOR ALPHA"
+    client.post("/api/settings", json={"style": "WIPED"})
+    r = client.post("/api/publish/load", json={"name": pub})
+    assert r.status_code == 200
+    assert r.json()["settings"]["style"] == "INK FOR ALPHA"
+    assert r.json()["book"]["style"] == "INK FOR ALPHA"
+    assert STYLE not in (r.json()["settings"]["style"],)
+
+
+def test_publish_moves_and_survives_delete_all(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.app import app as flaskish
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(flaskish)
+    r = client.post("/api/book/new", json={"title": "Four", "id": "four_"})
+    assert r.status_code == 200
+    bid = r.json()["book"]["id"]
+    plates = tmp_path / "books" / bid / "plates"
+    plates.mkdir(parents=True, exist_ok=True)
+    keep = plates / "P01-womb-v01-four.png"
+    junk = plates / "P02-uncurl-v01-four.png"
+    keep.write_bytes(b"keep")
+    junk.write_bytes(b"junk")
+    r = client.post("/api/publish", json={"paths": [str(keep)]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["n"] == 1
+    assert body["name"].startswith("01_")
+    assert body["name"].endswith("_Published")
+    pub = tmp_path / "books" / bid / body["name"]
+    assert (pub / "P01-womb-v01-four.png").exists()
+    assert not keep.exists()
+    assert junk.exists()
+    r = client.post("/api/plates/delete", json={"confirm": True, "scope": "all", "book_id": bid})
+    assert r.status_code == 200
+    assert not junk.exists()
+    assert (pub / "P01-womb-v01-four.png").exists()
+    r = client.post("/api/publish", json={"paths": [str(junk)]})
+    assert r.status_code == 400
+
+
+def test_next_cast_name_is_character_slot():
+    from platepress.app import _next_token
+
+    assert _next_token([]) == "CHAR1"
+    assert _next_token([{"name": "CHAR1"}]) == "CHAR2"
+    assert _next_token([{"name": "PingPong"}]) == "CHAR1"
+    assert _next_token([{"name": "CHARACTER1"}]) == "CHAR1"
+
+
+def test_one_ref_per_character_even_if_card_has_two(tmp_path):
+    from platepress.app import _refs_for
+    from platepress.parser import Character, Plate
+
+    a = tmp_path / "old.png"
+    b = tmp_path / "new.png"
+    a.write_bytes(b"x")
+    b.write_bytes(b"y")
+    chars = [
+        Character(
+            id="android",
+            name="ANDROID",
+            lock_text="lock",
+            ref_images=[str(a), str(b)],
+            ref_active=str(b),
+        ),
+    ]
+    plate = Plate(
+        slug="p1_cargo",
+        order=1,
+        scene_text="scene",
+        character_ids=["ANDROID"],
+        metaphor=None,
+        helmet_on=True,
+        caption="",
+        risky_twoshot=False,
+    )
+    refs = _refs_for(plate, chars)
+    assert refs == [b]
+    plate.named_ids = []
+    assert _refs_for(plate, chars) == []
+    plate.use_image = True
+    assert _refs_for(plate, chars) == []
+
+
+def test_neg_allow_lettering_drops_text_ban():
+    from platepress.defaults import NEG, neg_allow_lettering
+
+    out = neg_allow_lettering(NEG)
+    assert "watermark" in out
+    parts = {p.strip().lower() for p in out.split(",")}
+    assert "text" not in parts
+    assert "letters" not in parts
+
+
+def test_normalize_loras_from_legacy_fields():
+    from platepress.store import migrate_loras, normalize_loras
+
+    slots = normalize_loras({
+        "lora_name": "Krea2-aethernouveau-04/Krea2-aethernouveau-04_merged.safetensors",
+        "lora_strength": 0.8,
+    })
+    assert len(slots) == 1
+    assert slots[0]["name"].endswith("merged.safetensors")
+    s = migrate_loras({"lora_name": "a.safetensors", "lora_strength": 0.5})
+    assert s["loras"] == [{"name": "a.safetensors", "strength": 0.5}]
+    assert "krea2" in s["unet_name"].lower()
+
+
+def test_migrate_default_workflow_leaves_custom():
+    from platepress import store
+
+    s = store.migrate_default_workflow({
+        "workflow_text": "Krea2T_V3_ref_clean01-API.json",
+        "workflow_ref": "/tmp/Krea2T_V3_ref_clean01-API.json",
+    })
+    assert s["workflow_text"] == store.DEFAULT_API_WORKFLOW
+    assert s["workflow_ref"] == store.DEFAULT_API_WORKFLOW
+    custom = store.migrate_default_workflow({
+        "workflow_text": "platepress/workflows/mine-API.json",
+        "workflow_ref": "platepress/workflows/mine-API.json",
+    })
+    assert custom["workflow_text"] == "platepress/workflows/mine-API.json"
+
+
+def test_list_api_workflows_skips_ui_graph():
+    from platepress import store
+
+    s = store.default_settings()
+    items = store.list_api_workflows(s)
+    names = [i["name"] for i in items]
+    assert store.DEFAULT_API_WORKFLOW in names
+    assert "default_comfyUI.json" not in names
+    assert "krea2_character_consistency_workflow-03.json" not in names
+    assert "Krea2T_V3_ref_clean03-API.json" not in names
+    assert "Krea2T_V3_ref_clean03.json" not in names
+
+
+def test_job_workflows_book_override(tmp_path):
+    from platepress import store
+
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    custom = tmp_path / "books" / "default" / "workflows"
+    custom.mkdir(parents=True)
+    src = store.ROOT / store.DEFAULT_API_WORKFLOW
+    dest = custom / "book_custom-API.json"
+    dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    book = {"workflow": str(dest)}
+    text_wf, ref_wf = store.job_workflows(s, book)
+    assert text_wf == ref_wf
+    assert text_wf.name == "book_custom-API.json"
+    default_text, _ = store.job_workflows(s, {"workflow": None})
+    assert default_text.name == store.DEFAULT_API_WORKFLOW
+    listed = store.list_api_workflows(s, "default")
+    assert any(i["name"] == "book_custom-API.json" for i in listed)
+
+
+def test_match_combo_name_unique_basename():
+    from platepress.store import match_combo_name
+
+    available = [
+        "KREA2/krea2_turbo_bf16.safetensors",
+        "other/other.safetensors",
+    ]
+    assert match_combo_name("krea2_turbo_bf16.safetensors", available) == (
+        "KREA2/krea2_turbo_bf16.safetensors"
+    )
+    assert match_combo_name("KREA2/krea2_turbo_bf16.safetensors", available) == (
+        "KREA2/krea2_turbo_bf16.safetensors"
+    )
+    assert match_combo_name("missing.safetensors", available) is None
+
+
+def test_list_weights_relative_names(tmp_path):
+    from platepress.store import list_weights
+
+    (tmp_path / "KREA2").mkdir()
+    (tmp_path / "KREA2" / "krea2_turbo_bf16.safetensors").write_bytes(b"x")
+    (tmp_path / "skip.txt").write_text("no", encoding="utf-8")
+    names = list_weights(tmp_path)
+    assert names == ["KREA2/krea2_turbo_bf16.safetensors"]
+
+
+def test_list_weights_keeps_symlink_names(tmp_path):
+    from platepress.store import list_weights, portable_path, resolve_user_path
+
+    real = tmp_path / "actual_weights"
+    real.mkdir()
+    target = real / "krea2_turbo_bf16.safetensors"
+    target.write_bytes(b"x")
+    models = tmp_path / "diffusion_models"
+    krea = models / "KREA2"
+    krea.mkdir(parents=True)
+    (krea / "krea2_turbo_bf16.safetensors").symlink_to(target)
+    names = list_weights(models)
+    assert names == ["KREA2/krea2_turbo_bf16.safetensors"]
+
+    linked_root = tmp_path / "models_link"
+    linked_root.symlink_to(models)
+    assert resolve_user_path(str(linked_root), follow_symlinks=False).name == "models_link"
+    port = portable_path(linked_root, follow_symlinks=False)
+    assert "models_link" in port.replace("\\", "/")
+    assert "actual_weights" not in port
+
+    sub = tmp_path / "diffusion_models_sub"
+    sub.mkdir()
+    (sub / "KREA2").symlink_to(real)
+    assert list_weights(sub) == ["KREA2/krea2_turbo_bf16.safetensors"]
+
+    # Pointed at the KREA2 folder itself (often a softlink): keep "KREA2/" + file.
+    assert list_weights(krea) == ["KREA2/krea2_turbo_bf16.safetensors"]
+    krea_link_as = tmp_path / "KREA2_linkdir"
+    krea_link_as.symlink_to(real)
+    assert list_weights(krea_link_as) == ["KREA2_linkdir/krea2_turbo_bf16.safetensors"]
+
+
+def test_scan_weights_api(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.comfy_client import ComfyClient
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    monkeypatch.setattr(ComfyClient, "ping", lambda self: (False, "ComfyUI is not running"))
+    models = tmp_path / "diffusion_models"
+    loras = tmp_path / "loras"
+    (models / "KREA2").mkdir(parents=True)
+    (models / "KREA2" / "krea2_turbo_bf16.safetensors").write_bytes(b"m")
+    (loras / "style").mkdir(parents=True)
+    (loras / "style" / "one.safetensors").write_bytes(b"l")
+    client = TestClient(app)
+    r = client.post("/api/weights", json={"models_dir": str(models), "loras_dir": str(loras)})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["models"] == ["KREA2/krea2_turbo_bf16.safetensors"]
+    assert body["loras"] == ["style/one.safetensors"]
+    assert body["errors"] == []
