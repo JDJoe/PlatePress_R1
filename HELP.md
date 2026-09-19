@@ -20,7 +20,7 @@ INK (Style), layout, closer, NEG, UNET, LoRAs, sampler, and images-per-plate bel
 - **Bos, one plate**: each slug is one image. If that slug contains `left pane:` / `right pane:`, only that plate splits.
 - **Two-pane comic**: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.
 - Click a card to fill ink, layout line, and matching negatives, and save Settings. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.
-- **INK** (Style) and **Layout line** are prepended to every plate. They live on this book. An empty INK (Style) box is refused and the factory style is put back.
+- **INK** (Style) and **Layout line** are prepended to every plate. They live on this book. An empty INK (Style) box is refused and the factory style is put back. An empty Layout line stays empty (it is not put back).
 - **World closer** is empty on Bos. Two-pane fills “each pane is its own scene…”. Prepended only if that box has text.
 - **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default keeps its own diptych negative.
 - Stills and locks are **Text** / **Image** on the Book table, not Settings. **Cutout** is per character on Cast.
