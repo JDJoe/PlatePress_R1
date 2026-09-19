@@ -2,7 +2,7 @@
 #Four plates. Vex teaches. Glowing panel from text except Queue.
 
 p01_settings
-CHAR1 is Vex. KEEP the same Vex from source image1, identity, hair, makeup, horns, emerald skin, tail. She is now wearing tiny tight worn-out suede lederhosen, a worn brown suede bib-belt across her chest with two silver ring-buckles and shoulder straps, brown lace-up boots, forearm wraps, She looks happy.
+CHAR1 is Vex. KEEP the same woman from image1, her name is Vex. She is now wearing tiny tight worn-out suede lederhosen, a worn brown suede bib-belt across her chest with two silver ring-buckles and shoulder straps, brown lace-up boots, forearm wraps, She looks happy.
 CAMERA: medium-wide. Vex left, hip against a desk. A tall glowing rectangular panel fills the right half of the frame.
 LOCATION: Dim workshop. One battered desk. Cream parchment comic light. 
 The glowing panel is the Settings page. Title at the top reads Settings. The panel is split into two stacked sections. Upper section labeled Style examples. Lower section labeled Model and LoRAs. Readable short labels only. No gibberish.
@@ -10,7 +10,7 @@ ACTION: Vex points at the words Style examples.
 GAZE: Vex looks at the Style examples label, happy smirking, not at the viewer. 
 
 p02_cast
-CHAR1 is Vex. KEEP the same Vex from source image1, identity, hair, makeup, horns, emerald skin, tail. She is now wearing tiny tight worn-out suede lederhosen, worn brown suede bib-belt with silver ring-buckles, brown lace-up boots, forearm wraps, empty bottle on the right hip. She looks happy . 
+CHAR1 is Vex. KEEP the same woman from image1, her name is Vex. She is now wearing tiny tight worn-out suede lederhosen, worn brown suede bib-belt with silver ring-buckles, brown lace-up boots, forearm wraps, empty bottle on the right hip. She looks happy . 
 CAMERA: medium. Vex in three-quarter view. Glowing panel behind her right shoulder.
 LOCATION: Dim workshop. One battered desk. Cream parchment comic light.  
 The glowing panel is the Cast page. Title at the top reads Cast. One card labeled CHAR1. A short text box under the name. Readable words only: Cast, CHAR1. No gibberish.
@@ -18,7 +18,7 @@ ACTION: Vex leans back against the desk, one boot hooked on the stretcher, thumb
 GAZE: Vex looks at the CHAR1 card, not at the viewer. She looks happy
 
 p03_book
-CHAR1 is Vex. KEEP the same Vex from source image1, identity, hair, makeup, horns, emerald skin, tail. She is now wearing tiny tight worn-out suede lederhosen, worn brown suede bib-belt with silver ring-buckles, brown lace-up boots. She looks happy .
+CHAR1 is Vex. KEEP the same woman from image1, her name is Vex. She is now wearing tiny tight worn-out suede lederhosen, worn brown suede bib-belt with silver ring-buckles, brown lace-up boots. She looks happy .
 CAMERA: over Vex's right shoulder, half her face visible. Glowing panel dominates the frame.
 LOCATION: Dim workshop. One battered desk. Cream parchment comic light.  
 The glowing panel is the Book page. Title at the top reads Book. A small control labeled New Book. Two stacked boxes. Upper box labeled Slugs. Lower box labeled Captions. Readable labels only. No gibberish.
@@ -26,8 +26,8 @@ ACTION: Vex types in the Slugs box with one finger. Hip cocked.
 GAZE: Vex looks at the Slugs box. She looks happy. 
 
 p04_queue
-CHAR1 is Vex. KEEP the same Vex from source image1, identity, hair, makeup, emerald skin. She is now wearing tiny tight worn-out suede lederhosen, worn brown suede bib-belt with silver ring-buckles, brown lace-up boots. She looks happy.
-CHAR2 is QueueWall. KEEP the same screen from source image2.
+CHAR1 is Vex. KEEP the same woman from image1, her name is Vex. She is now wearing tiny tight worn-out suede lederhosen, worn brown suede bib-belt with silver ring-buckles, brown lace-up boots. She looks happy.
+CHAR2 is QueueWall. KEEP the same screen from image2.
 CAMERA: wide. Vex standing in front of QueueWall.
 LOCATION: Dim workshop. One battered desk. Cream parchment comic light. 
 The tall glowing panel shows the QueueWall. It shows a grid of tiny plates of Vex from the image2.

@@ -48,9 +48,9 @@ Good prompt structure:
 ```text
 p014_the_sample 
 
-CHAR1 is Solace. KEEP the same Solace from source image1, identity, hair, makeup. She is now in a white slim-fitting body suit with no helmet.
-CHAR2 is Veyra. KEEP the same Veyra from source image2, identity, hair, horns. She is now in worn-out suede lederhosen and brown boots.
-CHAR3 is Hans. KEEP the same Hans from source image3, identity, hair. He is now in a leather jacket, jeans, and black boots. 
+CHAR1 is Solace. KEEP the same woman from image1, her name is Solace. She is now in a white slim-fitting body suit with no helmet.
+CHAR2 is Veyra. KEEP the same woman from image2, her name is Veyra. She is now in worn-out suede lederhosen and brown boots.
+CHAR3 is Hans. KEEP the same man from image3, his name is Hans. He is now in a leather jacket, jeans, and black boots. 
 
 CAMERA: WIDE CINEMATIC SHOT, camera pulled well back from the characters.
 The characters occupy only approximately 50% of the image height.
@@ -64,9 +64,9 @@ MOOD: Everyone is scared.
 
 
 p015_it_brought_us 
-CHAR1 is Solace. KEEP the same Solace from source image1, identity, hair, makeup. She is now in a white slim-fitting body suit with no helmet.
-CHAR2 is Veyra. KEEP the same Veyra from source image2, identity, hair, horns. She is now in worn-out suede lederhosen and brown boots.
-CHAR3 is Hans. KEEP the same Hans from source image3, identity, hair. He is now in a leather jacket, jeans, and black boots. 
+CHAR1 is Solace. KEEP the same woman from image1, her name is Solace. She is now in a white slim-fitting body suit with no helmet.
+CHAR2 is Veyra. KEEP the same woman from image2, her name is Veyra. She is now in worn-out suede lederhosen and brown boots.
+CHAR3 is Hans. KEEP the same man from image3, his name is Hans. He is now in a leather jacket, jeans, and black boots. 
 
 CAMERA: wide shot from behind the three characters, showing the spreading black infection across the paradise and the enormous indistinct shape moving behind the distant mountains and in the sky. 
 
@@ -296,13 +296,13 @@ When the character is close enough that facial identity matters, activate the re
 The only KEEP form:
 
 ```text
-KEEP the same [subject] from source image1, identity, hair, makeup. She is now in …
+KEEP the same woman from image1, her name is PingPong.
 ```
 
 Example:
 
 ```text
-KEEP the same Hans from source image1, identity, hair, makeup. He is now in a tavern.
+KEEP the same man from image1, his name is Hans. He is now in a tavern.
 ```
 
 Do **not** write `KEEP everything`. Do not replace KEEP with “Preserve exact facial identity…”. List what to keep *after* the subject, then the new situation (`she is now in …`).  
@@ -329,7 +329,7 @@ The prompt then describes what changes for this shot.
 Example:
 
 ```text
-KEEP the same Solace from source image1, identity, hair, makeup. She is now in a white slim-fitting body suit with a clear bubble helmet.
+KEEP the same woman from image1, her name is Solace. She is now in a white slim-fitting body suit with a clear bubble helmet.
 ```
 
 The important principle is:
@@ -345,7 +345,7 @@ Do not repeatedly rebuild the entire character from scratch when the reference a
 One KEEP form. Never `KEEP everything` — that freezes background, clothes, pose, and room.
 
 ```text
-KEEP the same [subject] from source image1, identity, hair, makeup. She is now in …
+KEEP the same woman from image1, her name is PingPong.
 ```
 
 List only what must survive. Then the new situation. Omit clothes from the keep-list if this slug changes the costume.
@@ -653,9 +653,9 @@ The exact prose can vary. The important thing is that the Cast text is being lit
 When references are activated:
 
 ```text
-CHAR1 is Solace. KEEP the same Solace from source image1, identity, hair, makeup. She is now in a white slim-fitting body suit with a clear bubble helmet.
-CHAR2 is Veyra. KEEP the same Veyra from source image2, identity, hair, horns. She is now in the same white suit and helmet.
-CHAR3 is Hans. KEEP the same Hans from source image3, identity, hair. He is now in the same white suit and helmet.
+CHAR1 is Solace. KEEP the same woman from image1, her name is Solace. She is now in a white slim-fitting body suit with a clear bubble helmet.
+CHAR2 is Veyra. KEEP the same woman from image2, her name is Veyra. She is now in the same white suit and helmet.
+CHAR3 is Hans. KEEP the same man from image3, his name is Hans. He is now in the same white suit and helmet.
 ```
 
 Then specify current appearance and action:
@@ -801,7 +801,7 @@ If it is **strong visual identity and the shot is close enough for it to matter*
 
 ```text
 ACTIVATE REFERENCE
-+ use KEEP [subject] from source imageX
++ KEEP the same woman from image1, her name is PingPong.
 ```
 
 If it is **a distant/wide shot where facial identity is not important**:
@@ -939,7 +939,7 @@ If this entire document has become too long and everybody has forgotten why we a
 6. Use references when identity matters.
    For distant/wide shots, text-only may be better.
    For close shots, use:
-   KEEP the same [subject] from source image1, identity, hair, makeup. She is now in …
+   KEEP the same woman from image1, her name is PingPong.
    If a plate fails, change CAMERA or ACTION or HANDS and reroll that slug.
 ```
 

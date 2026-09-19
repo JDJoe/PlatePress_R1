@@ -12,7 +12,7 @@ Rules:
 - Do not write style, sampler, LoRA, negatives, layout instructions, or ink. Do not write a world closer.
 - Each plate starts with a slug on its own line, two digits: p01_wreck
 - Next line: CHAR1 is PingPong, or any Cast name as a token: ANYTHING is Anna, ROOM is the suite. Text on replaces that word with the card lock. Image on rewrites CHAR1 is Hans to image1 is Hans and uploads stills. The KEEP line you write is always:
-  KEEP the same [subject] from source image1, identity, hair, makeup. She is now in …
+  KEEP the same woman from image1, her name is Name.
   Never KEEP everything. Never “Preserve exact facial identity” instead of KEEP. Never CHARACTER1.
 - Labels are useful, not required. Do not invent headings just to fill a template. When a still is used:
 POSE IS NEW. Do not copy image1 pose, hands, or camera.
@@ -64,7 +64,7 @@ PROMPTS
 
 p01_shortname
 CHAR1 is Name
-KEEP the same Name from source image1, identity, hair, makeup. She is now in …
+KEEP the same woman from image1, her name is Name.
 POSE IS NEW. Do not copy image1 pose, hands, or camera.
 CAMERA:
 ACTION: Caught in the instant of

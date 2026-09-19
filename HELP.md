@@ -53,7 +53,7 @@ A useful example is:
 ```text
 p01_slug
 CHAR1 is PingPong
-KEEP the same PingPong from source image1, identity, hair, makeup. She is now in a cargo bay.
+KEEP the same woman from image1, her name is PingPong.
 CAMERA: Medium side action shot.
 LOCATION: Place, ground, weather or interior. Named objects.
 ACTION: Caught in the instant of [verb].

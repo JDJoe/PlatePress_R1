@@ -346,7 +346,7 @@ def test_image_on_without_token_sends_no_still():
     )
     wall = """
 p04_ridge
-KEEP the same PingPong from source image1, identity, hair, makeup. She is now in a cargo bay.
+KEEP the same woman from image1, her name is PingPong.
 REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
 """
     r = parse_book(wall, "", [still], use_image_for={"p04_ridge": True})
@@ -369,7 +369,7 @@ ACTION: Celine recedes as a pale shape on the corner.
 def test_picture1_becomes_image1_and_warns():
     wall = """
 p04_ridge
-KEEP the same PingPong from source image1, identity, hair, makeup. She is now in a cargo bay.
+KEEP the same woman from image1, her name is PingPong.
 REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
 ACTION: PingPong drops behind the ridge.
 """
@@ -783,7 +783,7 @@ def test_text_and_image_same_prompt_as_text():
     wall = """
 p01_heist
 CHARACTER1 is PingPong
-KEEP the same PingPong from source image1, identity, hair, makeup. She is now in a cargo bay.
+KEEP the same woman from image1, her name is PingPong.
 """
     text_only = parse_book(wall, "", CAST, use_text_for={"p01_heist": True})
     both = parse_book(
@@ -797,7 +797,7 @@ KEEP the same PingPong from source image1, identity, hair, makeup. She is now in
     assert "is PingPong" in t.assembled and "is PingPong" in b.assembled
     assert "CHARACTER1" not in t.assembled and "CHARACTER1" not in b.assembled
     assert b.named_ids == ["ANDROID"]
-    assert "KEEP the same PingPong from source image1" in b.assembled
+    assert "KEEP the same woman from image1" in b.assembled
 
 
 def test_text_column_defaults_off():
