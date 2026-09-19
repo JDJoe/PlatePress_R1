@@ -906,6 +906,7 @@ async function refreshRuns() {
       showBanner(`lettering ${slug}…`, "ok");
       try {
         await withBusy(el, "Lettering…", async () => {
+          await saveBookSilent();
           const r = await j("/api/letter", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1226,6 +1227,7 @@ if ($("letter-all-btn")) {
     showBanner("lettering all…", "ok");
     try {
       await withBusy($("letter-all-btn"), "Lettering…", async () => {
+        await saveBookSilent();
         const r = await j("/api/letter", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
