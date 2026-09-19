@@ -66,7 +66,7 @@ MOTION: Body, boots, pack, debris, the beat.
 These labels are **helpful structure, not a fixed Plate Press syntax**. They can be `CAMERA:`, `ROOF:`, `WHEELS:`, `BALLOON:`, or any other useful label the story needs. Plate Press passes the written prompt text on as-is. Consistent labels can make prompts easier to read, copy, search, compare, and debug, and may help keep related instructions grouped, but they are not required by Krea and should not be invented merely to fill a template.
 
 - Slug on its own line (`p01_wreck`, `t1_one`). Two digits so p010 sorts after p001.
-- Cast **name** is the token (`ANYTHING`, `ROOM`, `CHAR1`). New cards default to `CHAR1`, `CHAR2`. `CHAR1` / `PILOT1` = first card, `CHAR2` = second. **Text** on: token is replaced by that Cast card’s text and `is Anna` stays. **Image** on: stills upload as `image1`, `image2`, `image3` in token order; the token stays unless Text is also on. **Both**: Cast text in the prompt plus those stills. Write KEEP / REFERENCE for `image1` (and `image2` / `image3`) yourself when you want the reference used.
+- Cast **name** is the token (`ANYTHING`, `ROOM`, `CHAR1`). New cards default to `CHAR1`, `CHAR2`. `CHAR1` / `PILOT1` = first card, `CHAR2` = second. **Text** on: token is replaced by that Cast card’s text and `is Anna` stays. **Image** on: stills upload as `image1`, `image2`, `image3`; `CHAR1 is Hans` becomes `image1 is Hans` unless Text is also on. **Both**: Cast text in the prompt plus those stills. Write KEEP / REFERENCE for `image1` (and `image2` / `image3`) yourself when you want the reference used.
 - Do not paste ink, closer, sampler, or `LoRA trigger words` here. The app prepends ink and the layout line (and closer if that box is not empty).
 - Camera, character orientation, and gaze need to be explicit when they control the composition. Give each character a concrete thing to look at when they should not face the viewer.
 - For three or more characters, bind every important action and gaze instruction to a named character. Use names in the written scene description where possible.
@@ -99,7 +99,7 @@ Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained g
 
 - Per slug **Image** column, not a Settings switch. Tokens on that slug map to stills in order: first token → `image1`, second → `image2`, third → `image3` (`CHAR1` / `ROOM` / `ANYTHING` all count). No token on the wall → no still, even if Image is on.
 - **Generate** (all / selected / missing) always Parses first.
-- Text off + Image on: the wall still says `CHAR1 is Anna` or `ANYTHING is Anna`. The stills are `image1`…`image3`. Write KEEP/REFERENCE yourself.
+- Text off + Image on: `CHAR1 is Hans` becomes `image1 is Hans` (CHAR2 → `image2`). Stills upload as `image1`…`image3`. Write KEEP/REFERENCE yourself.
 - Reference images can influence more than identity. They may carry clothing, pose, composition, or camera distance into the result. A practical finding from testing is that wide shots can sometimes work better with the reference **off** when facial identity is not important.
 - Clean head/head-and-shoulders references are generally preferable for identity. Full-body costume references can be useful when you intentionally want the costume to persist, but they can also carry unwanted visual information.
 - Frontal “look at me” stills can encourage that pose. Use a deliberately composed identity reference when possible.

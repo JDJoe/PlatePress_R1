@@ -771,9 +771,9 @@ ACTION: Anna opens the crate.
         n_pictures_for={"p01_heist": 1},
     )
     p = r.plates[0]
-    assert "CHAR1 is Anna" in p.scene_text
+    assert "image1 is Anna" in p.scene_text
+    assert "CHAR1 is Anna" not in p.scene_text
     assert "CHARACTER1" not in p.scene_text
-    assert "image1 is Anna" not in p.scene_text
     assert "KEEP the woman same" not in p.assembled
     assert p.use_image is True
     assert p.named_ids == ["ANDROID"]

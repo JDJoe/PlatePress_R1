@@ -926,6 +926,22 @@ def parse_book(
                 if decls:
                     scene = expand_character_decls(scene, by_name)
                 scene = expand_named_tokens(scene, by_name, aliases)
+            elif use_image:
+                scene = character_tokens_to_images(scene)
+                skip = {a.lower() for a in aliases}
+                for name in extra:
+                    if not name or name.lower() in skip:
+                        continue
+                    idx = named.index(name) + 1 if name in named else 0
+                    if idx < 1:
+                        continue
+                    slot = f"image{idx}"
+                    scene = re.sub(r"\{" + re.escape(name) + r"\}", slot, scene)
+                    scene = re.sub(
+                        r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])",
+                        slot,
+                        scene,
+                    )
             locks_for_assemble = []
         else:
             hits = []
