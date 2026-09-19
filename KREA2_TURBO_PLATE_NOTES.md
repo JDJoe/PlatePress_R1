@@ -48,9 +48,9 @@ Good prompt structure:
 ```text
 p014_the_sample 
 
-CHAR1 is Solace. Preserve exact facial identity, makeup, hairstyle, body proportions. She is wearing a white futuristic slim-fitting body suit with no helmet. 
-CHAR2 is Veyra. Preserve exact facial identity, makeup, hairstyle, body proportions, horns. Veyra is wearing a very tight worn-out suede lederhosen and brown boots.  
-CHAR3 is Hans. Preserve exact facial identity, hairstyle, body proportions. Hans is wearing a leather jacket and jeans and black boots. 
+CHAR1 is Solace. KEEP the same Solace from source image1, identity, hair, makeup. She is now in a white slim-fitting body suit with no helmet.
+CHAR2 is Veyra. KEEP the same Veyra from source image2, identity, hair, horns. She is now in worn-out suede lederhosen and brown boots.
+CHAR3 is Hans. KEEP the same Hans from source image3, identity, hair. He is now in a leather jacket, jeans, and black boots. 
 
 CAMERA: WIDE CINEMATIC SHOT, camera pulled well back from the characters.
 The characters occupy only approximately 50% of the image height.
@@ -64,9 +64,9 @@ MOOD: Everyone is scared.
 
 
 p015_it_brought_us 
-CHAR1 is Solace. Preserve exact facial identity, makeup, hairstyle, body proportions. She is wearing a white futuristic slim-fitting body suit with no helmet. 
-CHAR2 is Veyra. Preserve exact facial identity, makeup, hairstyle, body proportions, horns. Veyra is wearing a very tight worn-out suede lederhosen and brown boots.  
-CHAR3 is Hans. Preserve exact facial identity, makeup, hairstyle, body proportions. He is wearing a leather jacket and jeans and black boots. 
+CHAR1 is Solace. KEEP the same Solace from source image1, identity, hair, makeup. She is now in a white slim-fitting body suit with no helmet.
+CHAR2 is Veyra. KEEP the same Veyra from source image2, identity, hair, horns. She is now in worn-out suede lederhosen and brown boots.
+CHAR3 is Hans. KEEP the same Hans from source image3, identity, hair. He is now in a leather jacket, jeans, and black boots. 
 
 CAMERA: wide shot from behind the three characters, showing the spreading black infection across the paradise and the enormous indistinct shape moving behind the distant mountains and in the sky. 
 
@@ -293,25 +293,19 @@ The Cast description establishes the character while avoiding unnecessary visual
 
 When the character is close enough that facial identity matters, activate the reference and use explicit preservation language.
 
-For example:
+The only KEEP form:
 
 ```text
-KEEP the same Solace from source image1.
+KEEP the same [subject] from source image1, identity, hair, makeup. She is now in …
 ```
 
-or:
+Example:
 
 ```text
-KEEP the same woman from source image1 exactly as she is.
+KEEP the same Hans from source image1, identity, hair, makeup. He is now in a tavern.
 ```
-COMMENT: Careful with the "exactly as she is". This can make her look at the camera no matter what is happening on the scene.
 
-Much better is to say: 
-
-```text
-Preserve exact facial identity, makeup, hairstyle, body proportions, clothing, accessories, and all fine details from the reference image.
-```
-Omit what's not needed.  
+Do **not** write `KEEP everything`. Do not replace KEEP with “Preserve exact facial identity…”. List what to keep *after* the subject, then the new situation (`she is now in …`).  
 
 
 Use the reference when the visual identity needs to be preserved strongly, rather than stuffing the reference into every shot.
@@ -333,20 +327,9 @@ When a reference is active, the reference establishes the visual identity.
 The prompt then describes what changes for this shot.
 
 Example:
-(not sure about this example)
-```text
-KEEP the same Solace from source image1.
-Solace is now wearing a white futuristic slim-fitting body suit with a clear bubble helmet.
-```
 
-This is probably better. 
 ```text
-KEEP the same woman from source image1 and change the pose and setting. Preserve exact facial identity, makeup, hairstyle, body proportions, she is now wearing a white futuristic slim-fitting body suit with a clear bubble helmet.
-```
-
-longer example: 
-```text
-KEEP the same woman and change the pose and setting: she is now sitting gracefully on a luxurious cream-colored sofa inside an elegant five-star hotel lounge with tall marble columns, crystal chandeliers, and warm golden lighting. She sits with one leg elegantly crossed over the other, her left arm resting comfortably along the back of the sofa while her right hand gently holds a porcelain coffee cup on her lap. Calm, confident expression with a soft smile, looking slightly toward the camera. Preserve exact facial identity, makeup, hairstyle, body proportions, clothing, accessories, and all fine details from the reference image.
+KEEP the same Solace from source image1, identity, hair, makeup. She is now in a white slim-fitting body suit with a clear bubble helmet.
 ```
 
 The important principle is:
@@ -359,63 +342,13 @@ Do not repeatedly rebuild the entire character from scratch when the reference a
 
 ## 7. Preserve only the scope that is actually wanted
 
-There are two different preservation instructions.
-
-### Subject-only preservation
-
-Use when only the character/object from the source should be preserved:
+One KEEP form. Never `KEEP everything` — that freezes background, clothes, pose, and room.
 
 ```text
-KEEP the same [subject] from source image1.
+KEEP the same [subject] from source image1, identity, hair, makeup. She is now in …
 ```
 
-or:
-
-```text
-KEEP the same woman from source image1 exactly as she is.
-```
-(careful with the "exactly")
-
-Longer version, where the scene changes but source image has all the details and those details need to be preserved: 
-
-```text
-KEEP the same woman and change the pose and setting: she is now walking barefoot along the shoreline during a beautiful golden sunset, gentle ocean waves touching the sand around her feet. She looks over her shoulder toward the camera while one hand lightly brushes her hair as the sea breeze moves naturally around her. Relaxed, elegant posture with a peaceful, confident expression. Preserve exact facial identity, makeup, hairstyle, body proportions, clothing, accessories, and every visual detail from the reference image.
-```
-
-This is the normal choice for a clean identity reference.
-
-
-
-### Whole-image preservation
-
-Use only when the source image's surroundings/composition are also intentionally wanted:
-
-```text
-KEEP everything from source image1 exactly as it is.
-```
-"Exactly as is" can confuse the model. For example, we want her pose to change. 
-
-Probably better prompt:
-```text
-KEEP the same woman and change the pose and setting: she is now walking barefoot along the shoreline during a beautiful golden sunset, gentle ocean waves touching the sand around her feet. She looks over her shoulder toward the camera while one hand lightly brushes her hair as the sea breeze moves naturally around her. Relaxed, elegant posture with a peaceful, confident expression. Preserve exact facial identity, makeup, hairstyle, body proportions, clothing, accessories, and every visual detail from the reference image.
-```
-
-....Preserve exact facial identity, makeup, hairstyle, body proportions, clothing, accessories, and every visual detail from the reference image.
-
-COMMENT: so far, "KEEP everything" is in every example, this should be changed!
-
-Do **not** use `KEEP everything` as the default character-reference instruction.
-
-It can preserve unwanted:
-
-- background
-- clothing
-- props
-- pose
-- composition
-- environment
-
-Use the narrowest preservation scope that matches the intent.
+List only what must survive. Then the new situation. Omit clothes from the keep-list if this slug changes the costume.
 
 ---
 
@@ -720,9 +653,9 @@ The exact prose can vary. The important thing is that the Cast text is being lit
 When references are activated:
 
 ```text
-CHAR1 is Solace. KEEP the same Solace from source image1. Preserve exact facial identity, makeup, hairstyle, body proportions (and what else is needed)
-CHAR2 is Veyra. KEEP the same Veyra from source image2. Preserve exact facial identity and...
-CHAR3 is Hans. KEEP the same Hans from source image3. Preserve exact facial identity, clothing, accessories...
+CHAR1 is Solace. KEEP the same Solace from source image1, identity, hair, makeup. She is now in a white slim-fitting body suit with a clear bubble helmet.
+CHAR2 is Veyra. KEEP the same Veyra from source image2, identity, hair, horns. She is now in the same white suit and helmet.
+CHAR3 is Hans. KEEP the same Hans from source image3, identity, hair. He is now in the same white suit and helmet.
 ```
 
 Then specify current appearance and action:
@@ -1006,7 +939,7 @@ If this entire document has become too long and everybody has forgotten why we a
 6. Use references when identity matters.
    For distant/wide shots, text-only may be better.
    For close shots, use:
-   KEEP the same [subject] from image1.
+   KEEP the same [subject] from source image1, identity, hair, makeup. She is now in …
    If a plate fails, change CAMERA or ACTION or HANDS and reroll that slug.
 ```
 

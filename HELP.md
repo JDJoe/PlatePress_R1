@@ -53,8 +53,7 @@ A useful example is:
 ```text
 p01_slug
 CHAR1 is PingPong
-KEEP the same woman from image1, her name is PingPong.
-REFERENCE: use image1. Preserve the face and hair from image1; ignore clothing and background if they are not wanted.
+KEEP the same PingPong from source image1, identity, hair, makeup. She is now in a cargo bay.
 CAMERA: Medium side action shot.
 LOCATION: Place, ground, weather or interior. Named objects.
 ACTION: Caught in the instant of [verb].

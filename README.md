@@ -71,7 +71,7 @@ Two walls. Slug on its own line (`p01_wreck`). Then `CHAR1 is PingPong` as you w
 ```
 p01_slug
 CHAR1 is PingPong
-KEEP the same woman from image1, her name is PingPong.
+KEEP the same PingPong from source image1, identity, hair, makeup. She is now in a cargo bay.
 REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT: Medium side action shot.
 CAMERA: Where we stand, where we look. Both eyes hidden. Does not face the viewer.
