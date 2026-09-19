@@ -69,6 +69,7 @@ def test_blank_style_does_not_wipe_ink(tmp_path, monkeypatch):
     assert r.status_code == 200
     assert r.json()["style"].strip() == STYLE.strip()
     assert "watercolor" in r.json()["style"].lower()
+    assert (r.json().get("layout_text") or "") == ""
 
 
 def test_index_and_parse_t1(tmp_path, monkeypatch):

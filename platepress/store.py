@@ -47,7 +47,7 @@ def migrate_layout(s: dict[str, Any]) -> dict[str, Any]:
         s["layout_text"] = LAYOUT_SPLIT if s.get("layout") == "split" else LAYOUT_ONE
     if s.get("layout") not in ("one", "split"):
         s["layout"] = "one"
-    if not s.get("layout_text"):
+    if s.get("layout_text") is None:
         s["layout_text"] = LAYOUT_SPLIT if s["layout"] == "split" else LAYOUT_ONE
     if s["layout"] == "split" and "two panels" in (s.get("neg") or ""):
         s["neg"] = neg_for("split")
@@ -265,11 +265,9 @@ def default_settings() -> dict[str, Any]:
 
 
 def _restore_ink(s: dict[str, Any]) -> dict[str, Any]:
-    """Blank Ink/layout/NEG is never valid. Empty Style box must not wipe Settings."""
+    """Blank Style/NEG is never valid. Layout line may be empty (user cleared it)."""
     if not str(s.get("style") or "").strip():
         s["style"] = STYLE
-    if not str(s.get("layout_text") or "").strip():
-        s["layout_text"] = LAYOUT_ONE if (s.get("layout") or "one") != "split" else LAYOUT_SPLIT
     if not str(s.get("neg") or "").strip():
         s["neg"] = NEG
     return s
