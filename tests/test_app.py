@@ -53,6 +53,44 @@ def test_ensure_demo_book_seeds_missing_default(tmp_path):
     assert (dest / "prompts_raw.txt").read_text(encoding="utf-8") == "keep-me"
 
 
+def test_output_size_is_per_book(tmp_path, monkeypatch):
+    from platepress import store
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    s["image_width"] = 1920
+    s["image_height"] = 1080
+    store.save_settings(s, tmp_path / "settings.json")
+    loaded = store.load_settings(tmp_path / "settings.json")
+    old = store.empty_book("old")
+    merged = store.merge_book_settings(loaded, old)
+    assert merged["image_width"] == 1280
+    assert merged["image_height"] == 1280
+    wide = store.empty_book("wide")
+    wide["image_width"] = 1920
+    wide["image_height"] = 1080
+    merged = store.merge_book_settings(loaded, wide)
+    assert merged["image_width"] == 1920
+    assert merged["image_height"] == 1080
+
+    client = TestClient(app)
+    page = client.get("/")
+    assert page.status_code == 200
+    assert 'id="image_width"' in page.text
+    assert 'id="image_height"' in page.text
+    bad = client.post("/api/settings", json={"image_width": 10, "image_height": 1080})
+    assert bad.status_code == 400
+    ok = client.post("/api/settings", json={"image_width": 1920, "image_height": 1080})
+    assert ok.status_code == 200
+    body = ok.json()
+    assert body["image_width"] == 1920
+    assert body["image_height"] == 1080
+    book = store.load_book(store.load_settings(tmp_path / "settings.json"))
+    assert book["image_width"] == 1920
+    assert book["image_height"] == 1080
+
+
 def test_blank_style_does_not_wipe_ink(tmp_path, monkeypatch):
     from platepress import store
     from platepress.defaults import STYLE

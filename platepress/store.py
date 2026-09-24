@@ -192,6 +192,10 @@ _LEGACY_API_WORKFLOWS = {
 _PATH_KEYS = ("workflow_text", "workflow_ref", "output_root", "models_dir", "loras_dir")
 _SYMLINK_PATH_KEYS = ("models_dir", "loras_dir")
 WEIGHT_SUFFIXES = {".safetensors", ".ckpt", ".pt", ".sft", ".gguf"}
+OUTPUT_WIDTH = 1280
+OUTPUT_HEIGHT = 1280
+OUTPUT_EDGE_MIN = 64
+OUTPUT_EDGE_MAX = 4096
 
 
 def is_protected_book(book_id: str) -> bool:
@@ -251,6 +255,8 @@ def default_settings() -> dict[str, Any]:
         "tail": "",
         "neg": NEG,
         "images_per_plate": PER_PROMPT,
+        "image_width": OUTPUT_WIDTH,
+        "image_height": OUTPUT_HEIGHT,
         "output_root": "platepress/books",
         "current_book": DEMO_BOOK_ID,
         "steps": 8,
@@ -294,6 +300,30 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
     return s
 
 
+def image_edge(value: Any, default: int) -> int:
+    """Plate edge in pixels. Out of range or blank falls back to the factory size."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    if n < OUTPUT_EDGE_MIN or n > OUTPUT_EDGE_MAX:
+        return default
+    return n
+
+
+def check_image_edge(value: Any) -> int:
+    """Reject a Settings save that is not a usable plate edge."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError) as e:
+        raise ValueError("output width and height must be whole numbers") from e
+    if n < OUTPUT_EDGE_MIN or n > OUTPUT_EDGE_MAX:
+        raise ValueError(
+            f"output width and height must be from {OUTPUT_EDGE_MIN} to {OUTPUT_EDGE_MAX}"
+        )
+    return n
+
+
 def save_settings(data: dict[str, Any], path: Path | None = None) -> None:
     path = path or DEFAULT_SETTINGS_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -301,6 +331,8 @@ def save_settings(data: dict[str, Any], path: Path | None = None) -> None:
     merged.update(data)
     merged = migrate_loras(migrate_default_workflow(merged))
     merged = _restore_ink(merged)
+    merged["image_width"] = image_edge(merged.get("image_width"), OUTPUT_WIDTH)
+    merged["image_height"] = image_edge(merged.get("image_height"), OUTPUT_HEIGHT)
     for key in _PATH_KEYS:
         if merged.get(key):
             merged[key] = portable_path(
@@ -341,6 +373,8 @@ BOOK_GEN_KEYS = (
     "sampler_name",
     "scheduler",
     "images_per_plate",
+    "image_width",
+    "image_height",
 )
 
 
@@ -362,6 +396,14 @@ def merge_book_settings(settings: dict[str, Any], book: dict[str, Any] | None) -
     for key in BOOK_GEN_KEYS:
         if _book_has_gen(book, key):
             out[key] = book[key]
+    # Books saved before output size existed stay on the factory plate,
+    # even if shared Settings was later saved at another size.
+    if not _book_has_gen(book, "image_width"):
+        out["image_width"] = OUTPUT_WIDTH
+    if not _book_has_gen(book, "image_height"):
+        out["image_height"] = OUTPUT_HEIGHT
+    out["image_width"] = image_edge(out.get("image_width"), OUTPUT_WIDTH)
+    out["image_height"] = image_edge(out.get("image_height"), OUTPUT_HEIGHT)
     return _restore_ink(out)
 
 

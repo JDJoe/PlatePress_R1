@@ -45,6 +45,7 @@ from .store import (
     copy_gen_into_book,
     delete_book_dir,
     empty_book,
+    check_image_edge,
     is_protected_book,
     iter_image_files,
     job_workflows,
@@ -437,6 +438,8 @@ def _run_job(job: dict[str, Any]) -> None:
         scheduler=s.get("scheduler") or "beta",
         unet_name=unet_name,
         loras=slots,
+        width=int(s.get("image_width") or 1280),
+        height=int(s.get("image_height") or 1280),
     )
     prompt_id = client.queue(filled)
     job["prompt_id"] = prompt_id
@@ -553,6 +556,13 @@ def post_settings(body: dict[str, Any]) -> dict[str, Any]:
     s = _settings()
     body = dict(body)
     body.pop("examples", None)
+    for key in ("image_width", "image_height"):
+        if key not in body:
+            continue
+        try:
+            body[key] = check_image_edge(body[key])
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
     book = load_book(s)
     for key in BOOK_GEN_KEYS:
         if key in body:

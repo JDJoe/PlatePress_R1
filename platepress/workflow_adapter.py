@@ -214,6 +214,19 @@ def prune_unused_refs(wf: Workflow, nmap: NodeMap, n_images: int) -> None:
             wf.pop(nid, None)
 
 
+def _set_size(wf: Workflow, node_id: str, key: str, value: int) -> None:
+    """Write width or height onto a linked value node, or onto the latent input."""
+    node = wf.get(node_id) or {}
+    cur = (node.get("inputs") or {}).get(key)
+    if isinstance(cur, list) and cur:
+        src = wf.get(str(cur[0]))
+        src_in = src.get("inputs") if isinstance(src, dict) else None
+        if isinstance(src_in, dict) and "value" in src_in:
+            src_in["value"] = int(value)
+            return
+    _set(wf, node_id, key, int(value))
+
+
 def fill(
     workflow: Workflow,
     *,
@@ -231,6 +244,8 @@ def fill(
     scheduler: str | None = None,
     unet_name: str | None = None,
     loras: list[dict[str, Any]] | None = None,
+    width: int | None = None,
+    height: int | None = None,
 ) -> Workflow:
     wf = copy.deepcopy(workflow)
     nmap = detect(wf)
@@ -280,6 +295,10 @@ def fill(
         samp_in["scheduler"] = scheduler
     if nmap.latent:
         _set(wf, nmap.latent, "batch_size", int(batch_size))
+        if width is not None:
+            _set_size(wf, nmap.latent, "width", int(width))
+        if height is not None:
+            _set_size(wf, nmap.latent, "height", int(height))
     if nmap.save:
         _set(wf, nmap.save, "filename_prefix", prefix)
 

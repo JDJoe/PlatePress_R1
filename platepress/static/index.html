@@ -60,6 +60,19 @@
       <label>Assembled recipe (preview)</label>
       <div id="assemble-preview" class="assemble-preview"></div>
 
+      <h3>Output size</h3>
+      <p class="tiny">This book. Width and height of the plate Comfy writes. 16:9 is 1920 × 1080. A book that has never set this stays 1280 × 1280.</p>
+      <div class="row">
+        <div>
+          <label>Width</label>
+          <input id="image_width" type="number" min="64" max="4096" step="1" />
+        </div>
+        <div>
+          <label>Height</label>
+          <input id="image_height" type="number" min="64" max="4096" step="1" />
+        </div>
+      </div>
+
       <button class="act" id="save-settings">Save settings</button>
       <button class="act ghost" id="test-comfy">Test connection</button>
 
@@ -131,7 +144,7 @@
           <button type="button" class="act ghost" id="refresh-workflows">Refresh list</button>
         </div>
       </div>
-      <p class="tiny">This book only. Default is Settings <code>default_comfyUI-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs still apply. The save prefix is still filled so Queue can find files.</p>
+      <p class="tiny">This book only. Default is Settings <code>default_comfyUI-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs and output width and height still apply. The save prefix is still filled so Queue can find files.</p>
       <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>CHAR1 is PingPong</code> stays as written — write KEEP / REFERENCE yourself. After Parse, Text, Image, and letter start off. letter sends captions and balloons onto the plate. Do not paste aethernouveau here. Say spacecraft, not ship. Do not write <code>CHARACTER1</code>.</p>
       <p class="tiny">Plate template — copy into the wall:</p>
       <pre id="plate-template" class="plate-template">p01_slug
@@ -206,7 +219,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
 
       <h3>Settings</h3>
       <ul>
-        <li>Ink, layout, closer, NEG, UNET, LoRAs live on the <strong>open book</strong>. Comfy host, port, and model folders stay in shared Settings. Default graph: <code>default_comfyUI-API.json</code>. NEG is written only if that graph has a CLIP negative node; the shipped default keeps its diptych negative.</li>
+        <li>Ink, layout, closer, NEG, UNET, LoRAs, and output width and height live on the <strong>open book</strong>. Comfy host, port, and model folders stay in shared Settings. Default graph: <code>default_comfyUI-API.json</code>. NEG is written only if that graph has a CLIP negative node; the shipped default keeps its diptych negative. 16:9 is 1920 × 1080. A book that has never set a size stays 1280 × 1280.</li>
         <li><strong>Test connection</strong> first.</li>
         <li><strong>Style cards are the mode.</strong> There is no Plate layout radio.</li>
         <li><strong>Bos, one plate</strong>: each slug is one image. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
@@ -290,6 +303,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=58"></script>
+  <script src="/static/app.js?v=59"></script>
 </body>
 </html>

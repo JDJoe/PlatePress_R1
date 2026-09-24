@@ -196,6 +196,71 @@ def test_fill_unet_and_lora_stack():
     assert out["27"]["inputs"]["lora_04"] == "None"
 
 
+def test_fill_sets_widescreen_on_width_height_nodes():
+    wf = load_workflow(V3)
+    out = fill(
+        wf,
+        positive="hello",
+        negative="neg",
+        seed=1,
+        prefix="PP_x",
+        lora_name="foo.safetensors",
+        lora_strength=0.5,
+        image_names=[],
+        width=1920,
+        height=1080,
+    )
+    assert out["25"]["inputs"]["value"] == 1920
+    assert out["26"]["inputs"]["value"] == 1080
+    assert out["24"]["inputs"]["width"] == ["25", 0]
+    assert out["24"]["inputs"]["height"] == ["26", 0]
+
+
+def test_fill_sets_literal_latent_size():
+    wf = {
+        "1": {
+            "inputs": {"text": "old"},
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "positive"},
+        },
+        "2": {
+            "inputs": {"text": "neg"},
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "negative"},
+        },
+        "3": {
+            "inputs": {
+                "seed": 1,
+                "steps": 4,
+                "cfg": 1,
+                "sampler_name": "euler",
+                "scheduler": "beta",
+                "positive": ["1", 0],
+                "negative": ["2", 0],
+            },
+            "class_type": "KSampler",
+        },
+        "4": {
+            "inputs": {"width": 512, "height": 512, "batch_size": 1},
+            "class_type": "EmptySD3LatentImage",
+        },
+    }
+    out = fill(
+        wf,
+        positive="hi",
+        negative="no",
+        seed=1,
+        prefix="p",
+        lora_name="x.safetensors",
+        lora_strength=0.5,
+        image_names=[],
+        width=1920,
+        height=1080,
+    )
+    assert out["4"]["inputs"]["width"] == 1920
+    assert out["4"]["inputs"]["height"] == 1080
+
+
 def test_still_for_comfy_rewrites_jpeg_as_png(tmp_path):
     from io import BytesIO
 

@@ -13,7 +13,7 @@ Also in the app: **Help** tab. The header always shows the open book.
 
 ## Settings
 
-INK (Style), layout, closer, NEG, UNET, LoRAs, sampler, and images-per-plate belong to the **open book**. Comfy host, port, and model folders stay in shared Settings. Save settings writes INK (Style) and weights onto this book. **Publish** stores a snapshot in that folder. **Load published** puts it back; missing UNET/LoRA names warn and the rest still loads.
+INK (Style), layout, closer, NEG, UNET, LoRAs, sampler, images-per-plate, and output width and height belong to the **open book**. Comfy host, port, and model folders stay in shared Settings. Save settings writes INK (Style) and weights onto this book. **Publish** stores a snapshot in that folder. **Load published** puts it back; missing UNET/LoRA names warn and the rest still loads.
 
 - **Test connection** first.
 - **Style cards are the mode.** There is no separate Plate layout radio.
@@ -25,9 +25,10 @@ INK (Style), layout, closer, NEG, UNET, LoRAs, sampler, and images-per-plate bel
 - **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default keeps its own diptych negative.
 - Stills and locks are **Text** / **Image** on the Book table, not Settings. **Cutout** is per character on Cast.
 - **Model and LoRAs** — **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Must be a Krea 2 UNET. Saved on this book with Save settings. Comfy host, port, and model folders stay in shared Settings.
+- **Output size** is this book’s plate width and height. 16:9 is 1920 × 1080. A book that has never set a size stays 1280 × 1280. Save settings writes it onto this book. Generate writes those numbers into the API graph (the width and height value nodes, or the latent node if they are plain numbers).
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
 
-API graph: `default_comfyUI-API.json` (text and stills; Qwen encode + ReferenceLatent when a still is on; unused LoadImage nodes are dropped). **Per book:** open that default in Comfy, change nodes or parameters, **Save (API Format)**, drop the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix. The UI twin is `default_comfyUI.json`.
+API graph: `default_comfyUI-API.json` (text and stills; Qwen encode + ReferenceLatent when a still is on; unused LoadImage nodes are dropped). **Per book:** open that default in Comfy, change nodes or parameters, **Save (API Format)**, drop the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, output width and height, and the save prefix. The UI twin is `default_comfyUI.json`.
 
 ## Cast
 

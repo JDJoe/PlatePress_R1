@@ -52,7 +52,7 @@ const SET_KEYS = [
   "host", "port", "workflow_text", "workflow_ref",
   "models_dir", "loras_dir", "unet_name",
   "style", "layout", "layout_text", "tail", "neg",
-  "images_per_plate", "output_root",
+  "images_per_plate", "image_width", "image_height", "output_root",
   "steps", "cfg", "sampler_name", "scheduler",
 ];
 const LORA_SLOTS = 4;
