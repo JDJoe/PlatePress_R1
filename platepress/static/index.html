@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Plate Press</title>
-  <link rel="stylesheet" href="/static/style.css?v=22" />
+  <link rel="stylesheet" href="/static/style.css?v=23" />
 </head>
 <body>
   <header>
@@ -203,6 +203,11 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <button type="button" class="act ghost" id="lightbox-close">Close</button>
       <img id="lightbox-img" alt="" />
       <p id="lightbox-cap" class="tiny"></p>
+      <div id="lightbox-nav">
+        <button type="button" class="act ghost" id="lightbox-prev">Previous</button>
+        <span id="lightbox-pos" class="tiny"></span>
+        <button type="button" class="act ghost" id="lightbox-next">Next</button>
+      </div>
     </div>
 
     <section id="view-help" class="view help">
@@ -236,7 +241,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
         <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
         <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
-        <li>Cast <strong>Name</strong> is the wall token (<code>ROOM</code>, <code>ANYTHING</code>, <code>CHAR1</code>). Text on: the word becomes the lock. <strong>Image</strong> on: stills are <code>image1</code>, <code>image2</code>, <code>image3</code> in token order. <code>CHAR1</code> / <code>PILOT1</code> still mean first card. <code>Anna</code> after <code>is</code> is writer text. Do not write <code>CHARACTER1</code>.</li>
+        <li>Cast <strong>Name</strong> is the wall token (<code>ROOM</code>, <code>ANYTHING</code>, <code>CHAR1</code>). A lone <code>CHAR1.</code> becomes that card’s description. Text on also rewrites <code>CHAR1 is Anna</code> (<code>is Anna</code> stays). Text off leaves a written <code>CHAR1 is Anna</code> line as written. <strong>Image</strong> on: stills are <code>image1</code>, <code>image2</code>, <code>image3</code> in token order. <code>CHAR1</code> / <code>PILOT1</code> still mean first card. <code>Anna</code> after <code>is</code> is writer text. Do not write <code>CHARACTER1</code>.</li>
         <li>Lock is face + suit + pack. Per-slug Text on Book inserts it. Per-slug Image sends the still. Cutout is per character on this page and is sent when Image is on.</li>
         <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
         <li>0–3 local stills per card. One body. Frontal portraits make the figure find the camera.</li>
@@ -283,7 +288,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
 
       <h3>Queue / Letter</h3>
       <ul>
-        <li>This page shows only the open book. Click a thumb to view it larger (Esc or click the dark to close).</li>
+        <li>This page shows only the open book. Click a thumb to view it larger. <strong>Previous</strong> and <strong>Next</strong>, or the left and right arrow keys, step through the plates on this page in grid order. Esc or click the dark to close.</li>
         <li>File names: <code>P01-wreck-v01-same-clouds.png</code>; two-pane pair <code>P01-cargo-P02-claim-v01-bos.png</code>; second seed <code>P01-wreck-v01-same-clouds-2.png</code>; lettered <code>P01-wreck-v01-same-clouds-lettered.png</code>. Each Generate is a new version, newest grid on top. Files sort by plate. No seed in the name.</li>
         <li>Thumbs land in the book <code>plates/</code> folder.</li>
         <li><strong>Letter all</strong> / <strong>Letter this</strong> is optional extra drawing on a copy. The usual path is Generate with the letter column on.</li>
@@ -303,6 +308,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=59"></script>
+  <script src="/static/app.js?v=60"></script>
 </body>
 </html>

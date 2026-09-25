@@ -26,6 +26,8 @@ _INLINE_PANES = re.compile(
 # The name after "is" is writer text, not a lookup. "CHARACTER" paints a person.
 _SLOT_WORD = r"(?:CHARACTER|PILOT|CHAR)"
 _CHAR_TOKEN = re.compile(rf"(?i)\b{_SLOT_WORD}(\d+)\b")
+# Lone "CHAR1." is a Cast placeholder. "CHAR1 is Anna" is a writer line.
+_BARE_SLOT = re.compile(rf"(?i)\b{_SLOT_WORD}(\d+)\b(?!\s*(?:is|=)\b)")
 _SLOT_LOCK_LINE = re.compile(rf"(?i)^{_SLOT_WORD}\d+\s+is\b")
 _SLOT_EXACT = re.compile(rf"(?i)^{_SLOT_WORD}(\d+)$")
 _NO_LETTER_LAYOUT = re.compile(
@@ -272,21 +274,42 @@ def expand_named_tokens(
     return out
 
 
+def _lock_for_slot(m: re.Match[str], slots: dict[int, str], by_name: dict[str, Character]) -> str | None:
+    name = slots.get(int(m.group(1)))
+    if not name:
+        return ""
+    lock = (by_name[name].lock_text or "").strip().rstrip(".,; ")
+    if not lock:
+        return None
+    return lock
+
+
 def expand_character_decls(body: str, by_name: dict[str, Character]) -> str:
     """Replace CHAR1 with that slot's Cast lock. Leave 'is Anna and …' as written."""
     names = list(by_name)
     slots = dict(parse_character_decls(body, names))
 
     def repl(m: re.Match[str]) -> str:
-        name = slots.get(int(m.group(1)))
-        if not name:
-            return ""
-        lock = (by_name[name].lock_text or "").strip().rstrip(".,; ")
-        if not lock:
+        lock = _lock_for_slot(m, slots, by_name)
+        if lock is None:
             return m.group(0)
         return lock
 
     return _CHAR_TOKEN.sub(repl, body or "")
+
+
+def expand_bare_character_decls(body: str, by_name: dict[str, Character]) -> str:
+    """Replace a lone CHAR1. with that card's lock. Leave 'CHAR1 is Anna'."""
+    names = list(by_name)
+    slots = dict(parse_character_decls(body, names))
+
+    def repl(m: re.Match[str]) -> str:
+        lock = _lock_for_slot(m, slots, by_name)
+        if lock is None:
+            return m.group(0)
+        return lock
+
+    return _BARE_SLOT.sub(repl, body or "")
 
 
 def character_tokens_to_images(body: str) -> str:
@@ -942,6 +965,12 @@ def parse_book(
                         slot,
                         scene,
                     )
+            else:
+                # Text off still fills a lone CHAR1. from Cast. "CHAR1 is Anna" stays.
+                scene = expand_bare_character_decls(scene, by_name)
+                if scene != body:
+                    hits = slot_names + extra
+                    named = list(hits)
             locks_for_assemble = []
         else:
             hits = []
@@ -980,6 +1009,9 @@ def parse_book(
                     right_src = expand_character_decls(right_src, by_name)
                 left_src = expand_named_tokens(left_src, by_name, aliases)
                 right_src = expand_named_tokens(right_src, by_name, aliases)
+            elif not use_image:
+                left_src = expand_bare_character_decls(left_src, by_name)
+                right_src = expand_bare_character_decls(right_src, by_name)
             pane_left = _image_slots(
                 _spacecraft(_canon_slot_tokens(re.sub(r"\s+", " ", left_src).strip()))
             )

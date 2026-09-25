@@ -666,16 +666,53 @@ async function loadBook() {
   if (r.notice) showBanner(r.notice, "warn");
 }
 
-function openLightbox(url, name) {
+let lightboxItems = [];
+let lightboxIndex = -1;
+
+function lightboxFrames() {
+  return [...document.querySelectorAll("#thumbs img[data-full]")].map((el) => ({
+    url: el.getAttribute("data-full") || el.src,
+    name: el.getAttribute("data-full-name") || el.alt || "",
+  }));
+}
+
+function showLightboxAt(index) {
   const box = $("lightbox");
   const img = $("lightbox-img");
   const cap = $("lightbox-cap");
-  if (!box || !img) return;
-  img.src = url || "";
-  img.alt = name || "";
-  if (cap) cap.textContent = name || "";
+  const pos = $("lightbox-pos");
+  const prev = $("lightbox-prev");
+  const next = $("lightbox-next");
+  if (!box || !img || !lightboxItems.length) return;
+  const last = lightboxItems.length - 1;
+  if (index < 0) index = 0;
+  if (index > last) index = last;
+  lightboxIndex = index;
+  const item = lightboxItems[index];
+  img.src = item.url || "";
+  img.alt = item.name || "";
+  if (cap) cap.textContent = item.name || "";
+  if (pos) pos.textContent = (index + 1) + " / " + lightboxItems.length;
+  if (prev) prev.disabled = index <= 0;
+  if (next) next.disabled = index >= last;
   box.classList.add("on");
   box.removeAttribute("hidden");
+}
+
+function openLightbox(url, name) {
+  lightboxItems = lightboxFrames();
+  let index = lightboxItems.findIndex((it) => it.url === url);
+  if (index < 0) {
+    lightboxItems = [{ url: url || "", name: name || "" }];
+    index = 0;
+  }
+  showLightboxAt(index);
+}
+
+function stepLightbox(delta) {
+  const box = $("lightbox");
+  if (!box || !box.classList.contains("on") || lightboxIndex < 0) return;
+  showLightboxAt(lightboxIndex + delta);
 }
 
 function closeLightbox() {
@@ -685,6 +722,8 @@ function closeLightbox() {
   box.classList.remove("on");
   box.setAttribute("hidden", "");
   if (img) img.src = "";
+  lightboxItems = [];
+  lightboxIndex = -1;
 }
 
 function slugsInName(name) {
@@ -1321,8 +1360,7 @@ document.querySelectorAll(".js-new-book").forEach((el) => {
 });
 if ($("lightbox")) {
   $("lightbox").addEventListener("click", (ev) => {
-    if (ev.target && ev.target.id === "lightbox-img") return;
-    closeLightbox();
+    if (ev.target && ev.target.id === "lightbox") closeLightbox();
   });
 }
 if ($("lightbox-close")) {
@@ -1331,8 +1369,34 @@ if ($("lightbox-close")) {
     closeLightbox();
   });
 }
+if ($("lightbox-prev")) {
+  $("lightbox-prev").addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    stepLightbox(-1);
+  });
+}
+if ($("lightbox-next")) {
+  $("lightbox-next").addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    stepLightbox(1);
+  });
+}
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") closeLightbox();
+  const open = $("lightbox") && $("lightbox").classList.contains("on");
+  if (ev.key === "Escape") {
+    if (open) closeLightbox();
+    return;
+  }
+  if (!open) return;
+  const tag = ev.target && ev.target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  if (ev.key === "ArrowLeft") {
+    ev.preventDefault();
+    stepLightbox(-1);
+  } else if (ev.key === "ArrowRight") {
+    ev.preventDefault();
+    stepLightbox(1);
+  }
 });
 if ($("copy-plate-template")) {
   $("copy-plate-template").onclick = async () => {

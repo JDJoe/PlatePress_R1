@@ -79,6 +79,8 @@ def test_output_size_is_per_book(tmp_path, monkeypatch):
     assert page.status_code == 200
     assert 'id="image_width"' in page.text
     assert 'id="image_height"' in page.text
+    assert 'id="lightbox-prev"' in page.text
+    assert 'id="lightbox-next"' in page.text
     bad = client.post("/api/settings", json={"image_width": 10, "image_height": 1080})
     assert bad.status_code == 400
     ok = client.post("/api/settings", json={"image_width": 1920, "image_height": 1080})

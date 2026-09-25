@@ -34,7 +34,7 @@ API graph: `default_comfyUI-API.json` (text and stills; Qwen encode + ReferenceL
 
 - Cast is per book. Five books can all have ANDROID; they are not the same person.
 - Header plus Cast, Book, Queue, and Settings headings show which book you are editing.
-- Cast **Name** is the wall token: `ROOM`, `LAMP`, `ANYTHING`, `CHAR1`. Text on: that word becomes the Cast text substitution, `is Anna` stays. **Image** on (per slug): that card’s still is `image1`, the next token’s still is `image2`, then `image3`. `CHAR1` / `PILOT1` still mean first card, `CHAR2` second. `Anna` after `is` is writer text. Do not write `CHARACTER1` — Krea does not see it as a special character handle.
+- Cast **Name** is the wall token: `ROOM`, `LAMP`, `ANYTHING`, `CHAR1`. A lone `CHAR1.` on the wall becomes that card’s description. Text on also rewrites `CHAR1 is Anna` (the `is Anna` stays). Text off leaves a written `CHAR1 is Anna` line as written. **Image** on (per slug): that card’s still is `image1`, the next token’s still is `image2`, then `image3`. `CHAR1` / `PILOT1` still mean first card, `CHAR2` second. `Anna` after `is` is writer text. Do not write `CHARACTER1` — Krea does not see it as a special character handle.
 - Cast text should normally contain **persistent character identity**: age, face, hair, skin, body type, recognizable proportions, and permanent distinguishing features. Do **not** normally put scene-specific clothing, props, pose, expression, or environment in Cast text. Those belong in the slug unless genuinely permanent.
 - A reference still is visual conditioning, not a perfectly isolated character channel. Prefer a clean identity reference: face/head, hair, and shoulders or upper chest when useful. Avoid temporary clothing, props, scenery, pose, or scene-specific composition when they are not meant to persist.
 - **Lock seed** on a thumb in Queue, then later plates of that character can reuse it. **COMMENT: needs further investigation.**
@@ -107,7 +107,7 @@ Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained g
 
 ## Queue / Letter
 
-- This page shows only the open book. Click a thumb to view it larger (Esc or click the dark to close).
+- This page shows only the open book. Click a thumb to view it larger. **Previous** and **Next**, or the left and right arrow keys, step through the plates on this page in grid order. Esc or click the dark to close.
 - File names (hyphens, no spaces):
   - `P01-wreck-v01-same-clouds.png`
   - two-pane pair: `P01-cargo-P02-claim-v01-bos.png`

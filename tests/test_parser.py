@@ -741,6 +741,24 @@ ACTION: Anna cuts. Betty watches the door.
     assert "CHARACTER2" not in p.assembled
 
 
+def test_bare_char1_uses_cast_lock_when_text_off():
+    cast = [Character(id="c", name="CHAR1", lock_text="A blond 30 year old")]
+    wall = """
+p004_isle
+CAMERA wide.
+CHAR1.
+She sits.
+"""
+    r = parse_book(wall, "", cast, use_text_for={"p004_isle": False})
+    p = r.plates[0]
+    assert p.use_text is False
+    assert "CHAR1" not in p.scene_text
+    assert "CHAR1" not in p.assembled
+    assert "A blond 30 year old." in p.scene_text
+    assert "She sits" in p.scene_text
+    assert p.character_ids == ["CHAR1"]
+
+
 def test_use_text_off_strips_character_token_no_lock():
     wall = """
 p01_heist
