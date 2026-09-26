@@ -214,6 +214,19 @@ def prune_unused_refs(wf: Workflow, nmap: NodeMap, n_images: int) -> None:
             wf.pop(nid, None)
 
 
+def _retarget_links(wf: Workflow, old_id: str, new_link: list) -> None:
+    """Point every input that read old_id at new_link. Keeps nodes downstream of a removed node."""
+    old_id = str(old_id)
+    replacement = [str(new_link[0]), int(new_link[1]) if len(new_link) > 1 else 0]
+    for node in wf.values():
+        if not isinstance(node, dict):
+            continue
+        inputs = node.get("inputs") or {}
+        for key, val in inputs.items():
+            if isinstance(val, list) and val and str(val[0]) == old_id:
+                inputs[key] = list(replacement)
+
+
 def _set_size(wf: Workflow, node_id: str, key: str, value: int) -> None:
     """Write width or height onto a linked value node, or onto the latent input."""
     node = wf.get(node_id) or {}
@@ -318,9 +331,15 @@ def fill(
             wf.pop(nmap.ref_method, None)
             if nmap.rebalance is None and nmap.ref_latent is None:
                 samp_in["positive"] = [nmap.positive, 0]
-        # No still: do not VAE-encode a leftover LoadImage. Sampler reads the text encode.
-        if n_img == 0 and nmap.ref_latent:
-            samp_in["positive"] = [nmap.positive, 0]
+        # No still: drop the VAE encode and ReferenceLatent. Anything that read
+        # ReferenceLatent (Seed Variance, or the sampler itself) now reads the
+        # text encode, so those nodes stay wired into the saved prompt.
+        if n_img == 0 and nmap.ref_latent and nmap.ref_latent in wf:
+            ref_in = (wf[nmap.ref_latent].get("inputs") or {})
+            upstream = ref_in.get("conditioning")
+            if not (isinstance(upstream, list) and upstream):
+                upstream = [nmap.positive, 0]
+            _retarget_links(wf, nmap.ref_latent, upstream)
             wf.pop(nmap.ref_latent, None)
             if nmap.ref_vae_encode:
                 wf.pop(nmap.ref_vae_encode, None)

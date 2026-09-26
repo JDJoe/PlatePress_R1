@@ -127,6 +127,38 @@ def test_fill_no_still_drops_all_loaders():
     assert out["15"]["inputs"]["positive"] == ["13", 0]
 
 
+def test_no_still_keeps_seed_variance_wired():
+    """Seed Variance sits between ReferenceLatent and the sampler. Text-only
+    plates drop ReferenceLatent but must not leave that node dangling."""
+    wf = load_workflow(V3)
+    wf["30"] = {
+        "inputs": {"conditioning": ["23", 0], "strength": 20},
+        "class_type": "KreaSeedVarianceEnhancer",
+        "_meta": {"title": "Seed Variance Enhancer - Krea 2 Turbo"},
+    }
+    wf["15"]["inputs"]["positive"] = ["30", 0]
+    out = fill(
+        wf,
+        positive="hello",
+        negative="neg",
+        seed=1,
+        prefix="PP_x",
+        lora_name="foo.safetensors",
+        lora_strength=0.5,
+        image_names=[],
+    )
+    assert "22" not in out
+    assert "23" not in out
+    assert out["30"]["class_type"] == "KreaSeedVarianceEnhancer"
+    assert out["30"]["inputs"]["conditioning"] == ["13", 0]
+    assert out["15"]["inputs"]["positive"] == ["30", 0]
+    ids = set(out)
+    for node in out.values():
+        for val in (node.get("inputs") or {}).values():
+            if isinstance(val, list) and val:
+                assert str(val[0]) in ids
+
+
 def test_fill_two_stills_keeps_image2():
     wf = load_workflow(V3)
     out = fill(
