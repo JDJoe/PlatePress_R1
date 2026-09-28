@@ -45,9 +45,11 @@ def migrate_layout(s: dict[str, Any]) -> dict[str, Any]:
         rest = tail[m.end() :].lstrip()
         s["tail"] = (" " + rest) if rest else ""
         s["layout_text"] = LAYOUT_SPLIT if s.get("layout") == "split" else LAYOUT_ONE
-    if s.get("layout") not in ("one", "split"):
+    if s.get("layout") not in ("one", "split", "blank"):
         s["layout"] = "one"
-    if s.get("layout_text") is None:
+    if s.get("layout") == "blank":
+        s["layout_text"] = ""
+    elif s.get("layout_text") is None:
         s["layout_text"] = LAYOUT_SPLIT if s["layout"] == "split" else LAYOUT_ONE
     if s["layout"] == "split" and "two panels" in (s.get("neg") or ""):
         s["neg"] = neg_for("split")
@@ -271,9 +273,7 @@ def default_settings() -> dict[str, Any]:
 
 
 def _restore_ink(s: dict[str, Any]) -> dict[str, Any]:
-    """Blank Style/NEG is never valid. Layout line may be empty (user cleared it)."""
-    if not str(s.get("style") or "").strip():
-        s["style"] = STYLE
+    """Blank NEG is filled. Blank Ink stays blank and is not sent."""
     if not str(s.get("neg") or "").strip():
         s["neg"] = NEG
     return s
@@ -382,6 +382,9 @@ def _book_has_gen(book: dict[str, Any], key: str) -> bool:
     v = (book or {}).get(key)
     if v is None:
         return False
+    # An explicit empty Ink box is a choice. Do not fall back to shared Settings.
+    if key == "style":
+        return True
     if key == "loras":
         return bool(v)
     if isinstance(v, str):
@@ -390,7 +393,7 @@ def _book_has_gen(book: dict[str, Any], key: str) -> bool:
 
 
 def merge_book_settings(settings: dict[str, Any], book: dict[str, Any] | None) -> dict[str, Any]:
-    """Book generate settings overlay shared Settings. Blank ink still restores factory."""
+    """Book generate settings overlay shared Settings. An empty Ink box stays empty."""
     out = dict(settings or {})
     book = book or {}
     for key in BOOK_GEN_KEYS:

@@ -217,12 +217,12 @@ braced in a narrow hold, liquid silver
 def test_double_style_stripped():
     wall = f"""
 p1_cargo
-aethernouveau. Ink and watercolor by Moebius, thin black outlines. {STYLE} braced in a narrow hold, liquid silver.{TAIL}
+{STYLE} braced in a narrow hold, liquid silver.{TAIL}
 """
     r = parse_book(wall, "", CAST, tail=TAIL)
     p = r.plates[0]
-    assert any("aethernouveau" in w for w in p.warnings)
-    assert "aethernouveau" not in p.assembled.lower()
+    assert any("Ink line" in w for w in p.warnings)
+    assert p.assembled.lower().count("thin black outlines") == 1
 
 
 def test_any_metaphor_is_kept():
@@ -554,6 +554,21 @@ She walks to the mantel and turns the clock, stained glass
     assert "Left pane:" not in r.plates[1].assembled
     assert "two equal vertical panes" not in r.plates[1].assembled
     assert "mantel" in r.plates[1].assembled
+
+
+def test_blank_plate_inserts_no_layout_sentence():
+    wall = """
+p1_cargo
+braced in a narrow hold, liquid silver
+"""
+    r = parse_book(wall, "", CAST, layout="blank", layout_text="")
+    text = r.plates[0].assembled
+    assert "undivided plate" not in text
+    assert "no second panel" not in text
+    assert "braced in a narrow hold" in text
+    direct = assemble(STYLE, [], "standing amidst the wreckage", "", layout="blank", layout_text="")
+    assert "undivided plate" not in direct
+    assert "standing amidst the wreckage" in direct
 
 
 def test_assemble_clauses_are_sentences():

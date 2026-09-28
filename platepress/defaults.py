@@ -84,6 +84,16 @@ def neg_allow_lettering(neg: str) -> str:
 NEG = neg_for("one")
 
 EXAMPLES = {
+    "blank": {
+        "id": "blank",
+        "label": "Blank plate",
+        "blurb": "No layout sentence. One image per slug. Ink and closer stay as they are.",
+        "layout": "blank",
+        "style": None,
+        "layout_text": "",
+        "tail": None,
+        "neg": None,
+    },
     "bos": {
         "id": "bos",
         "label": "Bos, one plate",

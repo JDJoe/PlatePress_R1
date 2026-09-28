@@ -202,16 +202,23 @@ function markActiveExample() {
   const style = ($("style") && $("style").value) || "";
   document.querySelectorAll("#examples .example").forEach((btn) => {
     const ex = (settings.examples || {})[btn.dataset.exid] || {};
-    btn.classList.toggle("on", ex.layout === layout && ex.style === style);
+    const styleOk = ex.style == null || ex.style === style;
+    btn.classList.toggle("on", ex.layout === layout && styleOk);
   });
+}
+
+function setExampleField(id, value) {
+  if (value == null) return;
+  const el = $(id);
+  if (el) el.value = value;
 }
 
 async function applyExample(ex) {
   if (!ex) return;
-  $("style").value = ex.style || "";
-  $("layout_text").value = ex.layout_text || "";
-  $("tail").value = ex.tail || "";
-  $("neg").value = ex.neg || "";
+  setExampleField("style", ex.style);
+  setExampleField("layout_text", ex.layout_text);
+  setExampleField("tail", ex.tail);
+  setExampleField("neg", ex.neg);
   if ($("layout")) $("layout").value = ex.layout || "one";
   settings.layout = ex.layout || "one";
   markActiveExample();

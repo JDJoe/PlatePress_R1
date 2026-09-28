@@ -334,14 +334,10 @@ def _strip_character_tokens(text: str, character_names: set[str]) -> str:
 
 def _strip_style_tail(body: str, style: str, tail: str, warnings: list[str], slug: str) -> str:
     b = body.strip()
-    if b.lower().startswith("aethernouveau"):
-        warnings.append(f"{slug}: body starts with aethernouveau — stripped duplicate STYLE/TAIL")
-        st = style.strip()
-        if b.startswith(st):
-            b = b[len(st) :].strip(" ,")
-        else:
-            # Cut through first sentence-ish prefix up to the usual period after STYLE.
-            b = re.sub(r"^aethernouveau\.[^.]*\.\s*", "", b, flags=re.I).strip(" ,")
+    st = style.strip()
+    if st and b.startswith(st):
+        warnings.append(f"{slug}: body starts with the Ink line — stripped duplicate")
+        b = b[len(st) :].strip(" ,")
     tail_s = tail.strip()
     if tail_s and b.endswith(tail_s):
         b = b[: -len(tail_s)].rstrip()
@@ -693,7 +689,10 @@ def assemble(
     """Ink + layout + closer + lock-if-no-still + Book wall."""
     style = style.strip()
     scene = _spacecraft(scene.strip().rstrip(".,; "))
-    lt = (layout_text or LAYOUT_ONE).strip()
+    if (layout or "one") == "blank":
+        lt = ""
+    else:
+        lt = (layout_text or LAYOUT_ONE).strip()
     closer = (tail or "").strip()
     lettering = (lettering or "").strip()
     if lettering:
@@ -1037,8 +1036,8 @@ def parse_book(
             n_pictures=n_pic,
             cutout=plate_cutout,
             cutout_text=cutout_text,
-            layout="one",
-            layout_text=layout_text or LAYOUT_ONE,
+            layout=layout or "one",
+            layout_text="" if (layout or "one") == "blank" else (layout_text or LAYOUT_ONE),
             lettering=lettering_prompt if use_letter else "",
         )
         plates.append(

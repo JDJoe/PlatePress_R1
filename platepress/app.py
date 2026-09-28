@@ -565,9 +565,10 @@ def post_settings(body: dict[str, Any]) -> dict[str, Any]:
             raise HTTPException(400, str(e)) from e
     book = load_book(s)
     for key in BOOK_GEN_KEYS:
-        if key in body:
-            book[key] = body[key]
-            s[key] = body[key]
+        if key not in body:
+            continue
+        book[key] = body[key]
+        s[key] = body[key]
     for key, val in body.items():
         if key not in BOOK_GEN_KEYS:
             s[key] = val
@@ -896,7 +897,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 continue
             refs = (refs_l[:1] + refs_r[:1])[:3]
             assembled = assemble_pair(
-                book.get("style") or s["style"],
+                s.get("style") or "",
                 locks_l,
                 left_scene,
                 locks_r,
@@ -934,7 +935,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
             refs = [path for _, path in pairs]
             locks = locks_for_scene(p.character_ids, by, p.scene_text, getattr(p, "use_text", False))
             assembled = assemble(
-                book.get("style") or s["style"],
+                s.get("style") or "",
                 locks,
                 p.scene_text,
                 book.get("tail") or s["tail"] or "",

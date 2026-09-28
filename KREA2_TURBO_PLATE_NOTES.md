@@ -683,9 +683,8 @@ STYLE should describe the visual language.
 Example:
 
 ```text
-aethernouveau. Ink and watercolor by Moebius, thin black outlines,
-muted ochre, rust, teal and black. Cream paper is the print stock,
-not the sky. Fill the frame, no bare sheet, no white void.
+Ink on cream paper, thin outlines, a small set of muted colors.
+The paper is the print stock, not the sky. Fill the frame.
 ```
 
 Avoid forcing generic environment content into STYLE, such as:

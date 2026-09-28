@@ -25,7 +25,7 @@
       <h2 data-book-heading="Open book"></h2>
       <p class="tiny">Ink, layout, and LoRA are shared. Cast, story, and plates belong to the open book below.</p>
       <h3>Style examples</h3>
-      <p class="tiny">The card is the mode. Bos: one image per slug (a slug may still split if it contains left pane / right pane). Two-pane comic: consecutive slugs share one image. Click fills ink, layout, and negatives. World closer stays empty on Bos; two-pane fills the pane closer.</p>
+      <p class="tiny">The card is the mode. <strong>Blank plate</strong>: no layout sentence is sent. Bos: one image per slug, and the undivided-plate line is sent. Two-pane comic: consecutive slugs share one image. Bos and two-pane fill ink, layout, and negatives. Blank plate only clears the layout line.</p>
       <div id="examples" class="examples"></div>
       <input type="hidden" id="layout" />
 
@@ -145,7 +145,7 @@
         </div>
       </div>
       <p class="tiny">This book only. Default is Settings <code>default_comfyUI-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs and output width and height still apply. The save prefix is still filled so Queue can find files.</p>
-      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>CHAR1 is PingPong</code> stays as written — write KEEP / REFERENCE yourself. After Parse, Text, Image, and letter start off. letter sends captions and balloons onto the plate. Do not paste aethernouveau here. Say spacecraft, not ship. Do not write <code>CHARACTER1</code>.</p>
+      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>CHAR1 is PingPong</code> stays as written — write KEEP / REFERENCE yourself. After Parse, Text, Image, and letter start off. letter sends captions and balloons onto the plate. Do not paste the Ink line here. Say spacecraft, not ship. Do not write <code>CHARACTER1</code>.</p>
       <p class="tiny">Plate template — copy into the wall:</p>
       <pre id="plate-template" class="plate-template">p01_slug
 CHAR1 is PingPong
@@ -264,7 +264,7 @@ HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
         <li>Slug on its own line. Cast name is the token (<code>ANYTHING</code>, <code>ROOM</code>, <code>CHAR1</code>). <strong>Text</strong>: token becomes the lock, <code>is Anna</code> stays. <strong>Image</strong>: stills are <code>image1</code>, <code>image2</code>, <code>image3</code> in token order. <strong>Both</strong>: lock plus those stills. Write KEEP / REFERENCE yourself.</li>
-        <li>Do not paste ink, closer, sampler, or <code>aethernouveau</code> here. The app prepends ink and the layout line (and closer if that box is not empty).</li>
+        <li>Do not paste the Ink line, closer, or sampler here. The app prepends ink and the layout line (and closer if that box is not empty).</li>
         <li>Hide the eyes. Working verb: <strong>caught in the instant of [verb]</strong>. Never call a person a pale shape, silhouette, or receding figure — Krea melts the body. CAMERA is empty air, not a third person at the edge.</li>
         <li>Captions go to Comfy when the <strong>letter</strong> column is on. Untagged lines become a bottom box on the plate (<code>CAP_B</code>). <code>CAP_T</code> is the top box. Place a balloon: <code>NS_6: line</code> — grid <code>1 2 / 3 4 / 5 6</code>. The plate size does not grow.</li>
         <li>The default book is the demo. It cannot be deleted from the UI.</li>
@@ -308,6 +308,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=60"></script>
+  <script src="/static/app.js?v=61"></script>
 </body>
 </html>

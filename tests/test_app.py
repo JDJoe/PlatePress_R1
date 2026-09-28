@@ -93,9 +93,36 @@ def test_output_size_is_per_book(tmp_path, monkeypatch):
     assert book["image_height"] == 1080
 
 
-def test_blank_style_does_not_wipe_ink(tmp_path, monkeypatch):
+def test_blank_style_save_is_not_sent(tmp_path, monkeypatch):
     from platepress import store
     from platepress.defaults import STYLE
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    ink = "Pencil and wash. Cream paper is the print stock, not the sky."
+    client = TestClient(app)
+    saved = client.post("/api/settings", json={"style": ink})
+    assert saved.status_code == 200
+    assert saved.json()["style"] == ink
+    cleared = client.post("/api/settings", json={"style": "", "image_width": 1920})
+    assert cleared.status_code == 200
+    assert cleared.json()["style"] == ""
+    assert ink not in (cleared.json()["style"] or "")
+    assert STYLE.strip() not in (cleared.json()["style"] or "")
+    book = store.load_book(store.load_settings(tmp_path / "settings.json"))
+    assert book.get("style") == ""
+    parsed = client.post("/api/parse", json={})
+    assert parsed.status_code == 200
+    plates = parsed.json()["plates"]
+    if plates:
+        assert ink not in plates[0]["assembled"]
+        assert "watercolor" not in plates[0]["assembled"].lower()
+
+
+def test_blank_style_stays_blank(tmp_path, monkeypatch):
+    from platepress import store
 
     monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
     s = store.default_settings()
@@ -103,12 +130,11 @@ def test_blank_style_does_not_wipe_ink(tmp_path, monkeypatch):
     s["style"] = "   "
     store.save_settings(s, tmp_path / "settings.json")
     loaded = store.load_settings(tmp_path / "settings.json")
-    assert loaded["style"].strip() == STYLE.strip()
+    assert not str(loaded["style"] or "").strip()
     client = TestClient(app)
     r = client.post("/api/settings", json={"style": "", "layout_text": "", "neg": ""})
     assert r.status_code == 200
-    assert r.json()["style"].strip() == STYLE.strip()
-    assert "watercolor" in r.json()["style"].lower()
+    assert not str(r.json()["style"] or "").strip()
     assert (r.json().get("layout_text") or "") == ""
 
 
@@ -268,6 +294,8 @@ def test_settings_includes_layout_examples(tmp_path, monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert "examples" in body and "bos" in body["examples"]
+    assert body["examples"]["blank"]["layout"] == "blank"
+    assert body["examples"]["blank"]["layout_text"] == ""
     assert body["examples"]["split"]["layout"] == "split"
     assert "vertical panes" in body["examples"]["split"]["layout_text"]
     assert "Single divided" not in (body.get("tail") or "")
