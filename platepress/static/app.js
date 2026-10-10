@@ -9,6 +9,15 @@ function showBanner(text, kind) {
   banner.className = text ? kind || "err" : "";
 }
 
+function setComfyStatus(ok, message) {
+  const chip = $("comfy-status");
+  if (!chip) return;
+  chip.dataset.state = ok ? "ok" : "err";
+  chip.title = message || "";
+  const txt = chip.querySelector(".status-text");
+  if (txt) txt.textContent = ok ? "ComfyUI connected" : "ComfyUI offline";
+}
+
 async function j(url, opts) {
   const r = await fetch(url, opts);
   const data = await r.json().catch(() => ({}));
@@ -35,11 +44,14 @@ async function withBusy(el, busyLabel, fn) {
 function setView(name) {
   document.querySelectorAll("nav button").forEach((b) => {
     b.classList.toggle("on", b.dataset.view === name);
+    if (b.dataset.view === name) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
   });
   document.querySelectorAll(".view").forEach((v) => {
     v.classList.toggle("on", v.id === "view-" + name);
   });
   showCurrentBook();
+  window.scrollTo(0, 0);
   if (name === "queue") refreshRuns();
   if (name === "settings") loadBooks();
 }
@@ -126,19 +138,17 @@ function renderLoras(slots) {
     const row = document.createElement("div");
     row.className = "lora-row";
     row.innerHTML = `
-      <div class="row">
-        <div>
-          <label>LoRA ${i + 1}</label>
-          <input class="lora-name" type="text" list="lora-list" />
-        </div>
-        <div style="max-width:7rem">
-          <label>strength</label>
-          <input class="lora-strength" type="number" step="0.05" />
-        </div>
-        <div style="max-width:5.5rem">
-          <label>&nbsp;</label>
-          <button type="button" class="act ghost lora-remove">Remove</button>
-        </div>
+      <span class="lora-idx${i === 0 ? " first" : ""}" title="${i === 0 ? "Style LoRA" : "LoRA " + (i + 1)}">${i + 1}</span>
+      <div>
+        <label for="lora-name-${i}">${i === 0 ? "LoRA 1 · style" : "LoRA " + (i + 1)}</label>
+        <input class="lora-name" id="lora-name-${i}" type="text" list="lora-list" autocomplete="off" placeholder="folder/file.safetensors" />
+      </div>
+      <div>
+        <label for="lora-strength-${i}">Strength</label>
+        <input class="lora-strength" id="lora-strength-${i}" type="number" step="0.05" />
+      </div>
+      <div class="lora-remove-wrap">
+        <button type="button" class="act ghost small lora-remove" aria-label="Remove LoRA ${i + 1}">Remove</button>
       </div>`;
     row.querySelector(".lora-name").value = slot.name || "";
     row.querySelector(".lora-strength").value = slot.strength ?? 0.8;
@@ -273,7 +283,7 @@ function bookLabel() {
 function showCurrentBook() {
   const label = bookLabel();
   const header = $("current-book");
-  if (header) header.textContent = "this book · " + label;
+  if (header) header.textContent = label;
   document.querySelectorAll("[data-book-heading]").forEach((el) => {
     const prefix = el.getAttribute("data-book-heading") || "";
     el.textContent = prefix ? `${prefix} · ${label}` : label;
@@ -288,34 +298,52 @@ function renderCast() {
   box.innerHTML = "";
   (book.characters || []).forEach((c, i) => {
     const div = document.createElement("div");
-    div.className = "card";
+    div.className = "card char-card";
     const slots = (c.ref_slots || []).map((slot) => {
       const on = slot.active ? "on" : "off";
       const label = slot.active ? "active" : "disabled";
       const img = slot.url ? `<img src="${slot.url}" alt="${slot.name}" />` : "";
       return `<div class="ref-slot ${on}">
         ${img}
-        <div class="tiny">${slot.name} · ${label}</div>
-        <button type="button" class="act ghost" data-useref="${c.name}" data-cid="${c.id}" data-refpath="${encodeURIComponent(slot.path)}" ${slot.active ? "disabled" : ""}>Use this</button>
-        <button type="button" class="act ghost" data-rmref="${c.name}" data-cid="${c.id}" data-rmpath="${encodeURIComponent(slot.path)}">Remove</button>
+        <div class="tiny" title="${slot.name} · ${label}">${slot.name} · ${label}</div>
+        <div class="ref-actions">
+          <button type="button" class="act ghost" data-useref="${c.name}" data-cid="${c.id}" data-refpath="${encodeURIComponent(slot.path)}" ${slot.active ? "disabled" : ""}>Use this</button>
+          <button type="button" class="act danger" data-rmref="${c.name}" data-cid="${c.id}" data-rmpath="${encodeURIComponent(slot.path)}">Remove</button>
+        </div>
       </div>`;
     }).join("");
     div.innerHTML = `
-      <label>Name (token)</label>
-      <input type="text" data-k="name" data-i="${i}" value="${c.name || ""}" />
-      <label>Lock</label>
-      <textarea data-k="lock_text" data-i="${i}">${c.lock_text || ""}</textarea>
-      <label class="tiny"><input type="checkbox" data-k="ref_cutout" data-i="${i}" ${c.ref_cutout ? "checked" : ""} /> Cutout (background already removed)</label>
-      <p class="tiny">Locked seed: ${c.locked_seed ?? "none"}</p>
-      <button class="act ghost" data-clear="${c.name}">Clear seed</button>
-      <label>Still — one body.</label>
-      <div class="ref-row">${slots || '<p class="tiny">no still</p>'}</div>
-      <label class="tiny">Replace still</label>
-      <input type="file" accept="image/*" data-upload="${c.name}" data-cid="${c.id}" />
-      <button type="button" class="act ghost" data-del-id="${c.id || ""}" data-del-name="${c.name || ""}">Delete character</button>
+      <div class="char-head">
+        <div class="field">
+          <label for="char-name-${i}">Name <span class="hint">wall token</span></label>
+          <input type="text" id="char-name-${i}" data-k="name" data-i="${i}" value="${c.name || ""}" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="char-lock-${i}">Lock <span class="hint">face · suit · pack</span></label>
+        <textarea id="char-lock-${i}" data-k="lock_text" data-i="${i}">${c.lock_text || ""}</textarea>
+      </div>
+      <div class="char-meta">
+        <label class="tiny"><input type="checkbox" data-k="ref_cutout" data-i="${i}" ${c.ref_cutout ? "checked" : ""} /> Cutout (background already removed)</label>
+        <p class="tiny seed">Locked seed: <span class="badge${c.locked_seed != null ? " accent" : ""}">${c.locked_seed ?? "none"}</span>
+          <button type="button" class="act ghost small" data-clear="${c.name}">Clear seed</button></p>
+      </div>
+      <div class="field">
+        <span class="lbl">Still <span class="hint">one body</span></span>
+        <div class="ref-row">${slots || '<p class="ref-empty">No still yet</p>'}</div>
+        <label class="tiny" for="char-file-${i}">Replace still</label>
+        <input type="file" id="char-file-${i}" accept="image/*" data-upload="${c.name}" data-cid="${c.id}" />
+      </div>
+      <div class="char-foot">
+        <button type="button" class="act danger small" data-del-id="${c.id || ""}" data-del-name="${c.name || ""}">Delete character</button>
+      </div>
     `;
     box.appendChild(div);
   });
+  if (!(book.characters || []).length) {
+    box.innerHTML = `<div class="empty-state"><strong>No characters in this book yet</strong>
+      <p>Add a character to give the wall a token like <code>CHAR1</code>, a lock, and an optional still — or load the demo cast.</p></div>`;
+  }
   box.querySelectorAll("input[data-k], textarea[data-k]").forEach((el) => {
     el.addEventListener("change", () => {
       const i = Number(el.dataset.i);
@@ -535,6 +563,15 @@ function renderPreview(plates, warnings, checkedSlugs) {
     tr.append(tdCheck, tdText, tdImg, tdLetter, tdSlug, tdCast, tdMeta, tdWarn, tdPrompt);
     tb.appendChild(tr);
   });
+  if (!(plates || []).length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 9;
+    td.className = "empty-row";
+    td.innerHTML = "<strong>No plates parsed yet</strong>Write or paste the story wall above, then press <b>Parse</b>.";
+    tr.appendChild(td);
+    tb.appendChild(tr);
+  }
   slugBoxes().forEach((el) => el.addEventListener("change", syncSlugAll));
   document.querySelectorAll("#preview input[data-use-text]").forEach((el) => {
     el.addEventListener("change", onSlugOptChange);
@@ -753,25 +790,31 @@ function thumbFigure(t, names) {
   const fig = document.createElement("figure");
   const opts = names.map((n) => `<option value="${n}">${n}</option>`).join("");
   const lockBtn = seed
-    ? `<button class="act ghost" data-lock="${seed}">Lock seed</button>`
+    ? `<button type="button" class="act ghost" data-lock="${seed}" title="Lock seed ${seed} to the chosen character">Lock seed</button>`
     : "";
   const letteredMark = t.lettered ? " · lettered" : "";
   const letterBtn = t.lettered || t.published
     ? ""
-    : `<button class="act ghost" data-letter="${slug}">Letter this</button>`;
+    : `<button type="button" class="act ghost" data-letter="${slug}">Letter this</button>`;
   const pick = t.published
     ? ""
     : `<label class="pick"><input type="checkbox" data-publish-path="${t.path}" /> pick</label>`;
   fig.innerHTML = `
-    ${pick}
-    <img src="${t.url}" alt="${t.name}" data-full="${t.url}" data-full-name="${t.name || ""}" />
+    <div class="thumb-media">
+      ${pick}
+      <img src="${t.url}" alt="${t.name}" data-full="${t.url}" data-full-name="${t.name || ""}" loading="lazy" />
+    </div>
     <figcaption>${t.name || ""}${letteredMark}</figcaption>
-    <select data-char>${opts}</select>
-    ${t.published ? "" : lockBtn}
-    ${t.published ? "" : `<button class="act ghost" data-reroll="${slug}">Reroll</button>`}
-    <button class="act ghost" data-asref="${t.path}">Use as ref</button>
-    ${letterBtn}
-    ${t.published ? "" : `<button class="act ghost" data-rmfile="${encodeURIComponent(t.path)}" data-bookid="${bid}">Delete file</button>`}
+    <div class="thumb-tools">
+      <select data-char aria-label="Character for seed / ref">${opts}</select>
+      ${t.published ? "" : lockBtn}
+    </div>
+    <div class="thumb-actions">
+      ${t.published ? "" : `<button type="button" class="act ghost" data-reroll="${slug}">Reroll</button>`}
+      <button type="button" class="act ghost" data-asref="${t.path}">Use as ref</button>
+      ${letterBtn}
+      ${t.published ? "" : `<button type="button" class="act danger" data-rmfile="${encodeURIComponent(t.path)}" data-bookid="${bid}">Delete</button>`}
+    </div>
   `;
   return fig;
 }
@@ -779,6 +822,7 @@ function thumbFigure(t, names) {
 async function refreshRuns() {
   const r = await j("/api/runs");
   $("qstatus").textContent = `queue ${r.queue_depth} · ${r.comfy.ok ? "Comfy up" : r.comfy.message} · ${r.current || ""}`;
+  setComfyStatus(r.comfy.ok, r.comfy.message);
   if (!r.comfy.ok) showBanner(r.comfy.message, "err");
   const fallbackNames = (book.characters || []).map((c) => c.name);
   const box = $("thumbs");
@@ -801,8 +845,8 @@ async function refreshRuns() {
   sec.appendChild(h);
   if (!batches.length) {
     const p = document.createElement("p");
-    p.className = "tiny";
-    p.textContent = "No plates in this book yet.";
+    p.className = "empty-state";
+    p.innerHTML = "<strong>No plates in this book yet.</strong>Parse the wall on the Book page, then Generate. New plates appear here.";
     sec.appendChild(p);
   } else {
     batches.forEach((b, i) => {
@@ -905,7 +949,7 @@ async function refreshRuns() {
   });
   box.querySelectorAll("[data-lock]").forEach((el) => {
     el.addEventListener("click", async () => {
-      const sel = el.parentElement.querySelector("[data-char]");
+      const sel = (el.closest("figure") || el.parentElement).querySelector("[data-char]");
       await j("/api/lock-seed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -936,7 +980,7 @@ async function refreshRuns() {
   });
   box.querySelectorAll("[data-asref]").forEach((el) => {
     el.addEventListener("click", async () => {
-      const sel = el.parentElement.querySelector("[data-char]");
+      const sel = (el.closest("figure") || el.parentElement).querySelector("[data-char]");
       await j("/api/use-as-ref", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -992,12 +1036,16 @@ async function loadBooks() {
   box.innerHTML = "";
   (r.books || []).forEach((b) => {
     const row = document.createElement("div");
-    row.className = "card";
+    row.className = "book-row" + (b.current ? " current" : "");
     row.innerHTML = `
-      <strong>${b.current ? "▸ " : ""}${b.title}</strong>
-      <span class="tiny"> ${b.id} · ${b.n_plates} plates</span>
-      ${b.current ? "" : `<button type="button" class="act ghost" data-openbook="${b.id}">Open</button>`}
-      ${b.protected || b.id === "default" ? `<span class="tiny">demo</span>` : `<button type="button" class="act ghost" data-delbook="${b.id}">Delete book</button>`}
+      <div class="book-meta">
+        <span class="book-title">${b.title} ${b.current ? `<span class="badge accent">open</span>` : ""}</span>
+        <span class="tiny">${b.id} · ${b.n_plates} plates</span>
+      </div>
+      <div class="book-actions">
+        ${b.current ? "" : `<button type="button" class="act ghost small" data-openbook="${b.id}">Open</button>`}
+        ${b.protected || b.id === "default" ? `<span class="badge">demo</span>` : `<button type="button" class="act danger small" data-delbook="${b.id}">Delete book</button>`}
+      </div>
     `;
     box.appendChild(row);
   });
@@ -1190,6 +1238,7 @@ $("save-settings").onclick = async () => {
 };
 $("test-comfy").onclick = async () => {
   const r = await j("/api/comfy/test");
+  setComfyStatus(r.ok, r.message);
   showBanner(r.message, r.ok ? "ok" : "err");
 };
 $("demo-cast").onclick = async () => {
@@ -1424,6 +1473,7 @@ if ($("copy-plate-template")) {
     fillSettings(await j("/api/settings"));
     await loadBooks();
     const ping = await j("/api/comfy/test");
+    setComfyStatus(ping.ok, ping.message);
     showBanner(ping.message, ping.ok ? "ok" : "err");
   } catch (e) {
     showBanner(e.message, "err");
