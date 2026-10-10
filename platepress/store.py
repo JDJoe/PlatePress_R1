@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import threading
 import uuid
@@ -12,50 +11,22 @@ from pathlib import Path
 from typing import Any
 
 from .defaults import (
-    CLOSER_SPLIT,
-    LAYOUT_ONE,
-    LAYOUT_SPLIT,
     LORA,
     LORA_SLOTS,
     LORA_STRENGTH,
     NEG,
     PER_PROMPT,
     REF_CUTOUT,
-    STYLE,
     UNET,
-    neg_for,
-)
-
-_LAYOUT_HEAD = re.compile(
-    r"^\s*Single (?:un)?divided plate[^.]*\.\s*",
-    re.I,
 )
 
 
 def migrate_layout(s: dict[str, Any]) -> dict[str, Any]:
-    """Lift a layout sentence out of TAIL; keep ink/closer/neg in sync."""
-    tail = s.get("tail") or ""
-    m = _LAYOUT_HEAD.match(tail)
-    if m:
-        head = m.group(0).lower()
-        if "undivided" in head:
-            s["layout"] = "one"
-        elif "divided" in head or "two scene" in head:
-            s["layout"] = "split"
-        rest = tail[m.end() :].lstrip()
-        s["tail"] = (" " + rest) if rest else ""
-        s["layout_text"] = LAYOUT_SPLIT if s.get("layout") == "split" else LAYOUT_ONE
+    """Keep a known layout id. Style, layout line, closer, and negative stay as written."""
     if s.get("layout") not in ("one", "split", "blank"):
         s["layout"] = "one"
-    if s.get("layout") == "blank":
+    if s.get("layout_text") is None:
         s["layout_text"] = ""
-    elif s.get("layout_text") is None:
-        s["layout_text"] = LAYOUT_SPLIT if s["layout"] == "split" else LAYOUT_ONE
-    if s["layout"] == "split" and "two panels" in (s.get("neg") or ""):
-        s["neg"] = neg_for("split")
-    tail_now = s.get("tail") or ""
-    if "same place, same hour" in tail_now.lower():
-        s["tail"] = CLOSER_SPLIT
     return s
 
 
@@ -251,9 +222,9 @@ def default_settings() -> dict[str, Any]:
         "lora_name": LORA,
         "lora_strength": LORA_STRENGTH,
         "loras": [],
-        "style": STYLE,
+        "style": "",
         "layout": "one",
-        "layout_text": LAYOUT_ONE,
+        "layout_text": "",
         "tail": "",
         "neg": NEG,
         "images_per_plate": PER_PROMPT,

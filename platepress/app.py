@@ -653,13 +653,13 @@ def get_book() -> dict[str, Any]:
 def post_book(body: dict[str, Any]) -> dict[str, Any]:
     s = _settings()
     book = load_book(s)
+    # Ink, layout, and closer are saved with Settings. The page posts the book
+    # it loaded, which would put the previous recipe back over the boxes.
     for k in (
         "title",
         "prompts_raw",
         "captions_raw",
         "characters",
-        "style",
-        "tail",
         "plates",
         "workflow",
         "slug_opts",
@@ -673,8 +673,6 @@ def post_book(body: dict[str, Any]) -> dict[str, Any]:
                 book[k] = portable_path(raw, follow_symlinks=False)
             else:
                 book[k] = None
-        elif k in ("style", "tail") and not str(body.get(k) or "").strip():
-            book[k] = None
         else:
             book[k] = body[k]
     if "characters" in body:
@@ -903,6 +901,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 locks_r,
                 right_scene,
                 book.get("tail") or s.get("tail") or "",
+                layout=s.get("layout") or "one",
                 layout_text=s.get("layout_text") or "",
                 n_left_refs=min(1, len(refs_l)),
                 n_right_refs=min(1, len(refs_r)),

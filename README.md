@@ -34,16 +34,11 @@ Books live as folders under `platepress/books/<id>/` (JSON, walls, stills, plate
 
 ## Settings (shared)
 
-Ink, closer, NEG, UNET, LoRAs, and sampler live on the **open book**. Comfy host, port, and model folders stay in shared Settings. **Publish** writes a snapshot next to the plates; **Load published** restores it (missing UNET/LoRA names warn). Cast, story, plates, per-slug Text/Image, and the book’s API workflow stay in that book’s folder. **World closer** is empty on Bos; the two-pane card fills the pane closer.
+Ink, closer, NEG, UNET, LoRAs, and sampler live on the **open book**. Comfy host, port, and model folders stay in shared Settings. **Publish** writes a snapshot next to the plates; **Load published** restores it (missing UNET/LoRA names warn). Cast, story, plates, per-slug Text/Image, and the book’s API workflow stay in that book’s folder. **World closer** is sent only when that box has text.
 
-**Style cards are the mode.** Click one; the boxes stay editable.
+**Example cards are not a mode.** One plate removes the two-pane line from the style box. Your other text stays. Two-pane adds that line to whatever is already there. An empty style box adds nothing. The old watercolor ink line is not a default. Style, the layout line, and the closer are sent as written. Changing a box replaces the previous text.
 
-| Card | What generate does |
-| --- | --- |
-| **Bos, one plate** | One image per slug. If that slug contains `left pane:` / `right pane:`, only that plate splits. The rest stay a single frame. |
-| **Two-pane comic** | Consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. |
-
-There is no separate Plate layout radio. The card *is* the mode.
+A plate is one image per slug. If that slug contains `left pane:` / `right pane:`, only that plate splits.
 
 Stills and locks are per slug on the Book table (**Text** / **Image** columns). There is no global stills switch. **Cutout** is per character on Cast.
 

@@ -207,40 +207,79 @@ function renderExamples(examples) {
   markActiveExample();
 }
 
+function exampleInserts() {
+  const examples = settings.examples && typeof settings.examples === "object"
+    ? Object.values(settings.examples)
+    : [];
+  return examples.map((ex) => String((ex && ex.insert) || "").trim()).filter(Boolean);
+}
+
 function markActiveExample() {
-  const layout = layoutValue();
   const style = ($("style") && $("style").value) || "";
+  const inserts = exampleInserts();
+  const hasInsert = inserts.some((line) => style.includes(line));
   document.querySelectorAll("#examples .example").forEach((btn) => {
     const ex = (settings.examples || {})[btn.dataset.exid] || {};
-    const styleOk = ex.style == null || ex.style === style;
-    btn.classList.toggle("on", ex.layout === layout && styleOk);
+    const line = String(ex.insert || "").trim();
+    btn.classList.toggle("on", line ? style.includes(line) : !hasInsert);
   });
 }
 
-function setExampleField(id, value) {
-  if (value == null) return;
-  const el = $(id);
-  if (el) el.value = value;
+function appendStyleLine(line) {
+  const el = $("style");
+  const addition = String(line || "").trim();
+  if (!el || !addition) return false;
+  const cur = el.value.replace(/\s+$/, "");
+  if (cur.includes(addition)) return false;
+  el.value = cur ? `${cur} ${addition}` : addition;
+  return true;
+}
+
+function removeStyleLine(line) {
+  const el = $("style");
+  const removal = String(line || "").trim();
+  if (!el || !removal || !el.value.includes(removal)) return false;
+  el.value = el.value
+    .split(removal)
+    .join(" ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/^\s+/, "")
+    .replace(/\s+$/, "");
+  return true;
+}
+
+async function saveExample(message) {
+  markActiveExample();
+  updateAssemblePreview();
+  settings = await j("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(readSettings()),
+  });
+  fillSettings(settings);
+  showBanner(message, "ok");
 }
 
 async function applyExample(ex) {
   if (!ex) return;
-  setExampleField("style", ex.style);
-  setExampleField("layout_text", ex.layout_text);
-  setExampleField("tail", ex.tail);
-  setExampleField("neg", ex.neg);
-  if ($("layout")) $("layout").value = ex.layout || "one";
-  settings.layout = ex.layout || "one";
-  markActiveExample();
-  updateAssemblePreview();
+  const line = String(ex.insert || "").trim();
+  const name = ex.label || ex.id || "example";
   try {
-    settings = await j("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(readSettings()),
-    });
-    fillSettings(settings);
-    showBanner("using " + (ex.label || ex.id) + " — settings saved", "ok");
+    if (!line) {
+      let removed = false;
+      exampleInserts().forEach((insert) => {
+        if (removeStyleLine(insert)) removed = true;
+      });
+      if ($("layout")) $("layout").value = "one";
+      await saveExample(
+        removed
+          ? "Removed the two-pane line. The rest of the style box stays."
+          : "One plate. The style box stays as written."
+      );
+      return;
+    }
+    const added = appendStyleLine(line);
+    await saveExample(added ? "added " + name + " to the style box" : name + " is already in the style box");
   } catch (e) {
     showBanner(e.message, "err");
   }
@@ -248,6 +287,7 @@ async function applyExample(ex) {
 
 function fillSettings(s) {
   settings = s;
+  rememberBookGen(s);
   SET_KEYS.forEach((k) => {
     const el = $(k);
     if (el) el.value = s[k] ?? "";
@@ -271,6 +311,30 @@ function readSettings() {
   });
   body.loras = readLoras();
   return body;
+}
+
+const BOOK_GEN_KEYS = [
+  "style", "layout", "layout_text", "tail", "neg",
+  "unet_name", "loras", "lora_name", "lora_strength",
+  "steps", "cfg", "sampler_name", "scheduler",
+  "images_per_plate", "image_width", "image_height",
+];
+
+function rememberBookGen(s) {
+  if (!s) return;
+  BOOK_GEN_KEYS.forEach((k) => {
+    if (Object.prototype.hasOwnProperty.call(s, k)) book[k] = s[k];
+  });
+}
+
+async function saveSettingsSilent() {
+  settings = await j("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(readSettings()),
+  });
+  rememberBookGen(settings);
+  return settings;
 }
 
 function bookLabel() {
@@ -638,6 +702,7 @@ async function onSlugOptChange() {
   syncColAll("letter");
   try {
     await saveBookSilent();
+    await saveSettingsSilent();
     const picked = selectedSlugs();
     const r = await j("/api/parse", {
       method: "POST",
@@ -1110,6 +1175,7 @@ async function generate(mode) {
   const btn = mode === "sel" ? $("gen-sel") : mode === "all" ? $("gen-all") : $("gen-missing");
   try {
     await saveBookSilent();
+    await saveSettingsSilent();
     const preserveSel = slugBoxes().length > 0;
     const picked = selectedSlugs();
     const parsed = await j("/api/parse", {
@@ -1281,6 +1347,7 @@ $("title").addEventListener("input", () => {
 });
 $("parse").onclick = async () => {
   await saveBookSilent();
+  await saveSettingsSilent();
   const preserveSel = slugBoxes().length > 0;
   const picked = selectedSlugs();
   const r = await j("/api/parse", {

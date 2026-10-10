@@ -76,7 +76,7 @@ The years did not ask.
     assert "She had been designed for beauty" not in r.plates[0].assembled
     assert "rectangular caption box" in r.plates[0].lettering_prompt
     assert "ANDROID" not in r.plates[0].assembled.replace(ANDROID, "")
-    assert r.plates[0].assembled.startswith("Ink and watercolor")
+    assert "watercolor" not in r.plates[0].assembled.lower()
     assert ANDROID not in r.plates[0].assembled
     assert "braced in a narrow hold" in r.plates[0].assembled
 
@@ -215,11 +215,13 @@ braced in a narrow hold, liquid silver
 
 
 def test_double_style_stripped():
+    from platepress.defaults import INK_BOS
+
     wall = f"""
 p1_cargo
-{STYLE} braced in a narrow hold, liquid silver.{TAIL}
+{INK_BOS} braced in a narrow hold, liquid silver.{TAIL}
 """
-    r = parse_book(wall, "", CAST, tail=TAIL)
+    r = parse_book(wall, "", CAST, style=INK_BOS, tail=TAIL)
     p = r.plates[0]
     assert any("Ink line" in w for w in p.warnings)
     assert p.assembled.lower().count("thin black outlines") == 1
@@ -440,6 +442,8 @@ def test_picture_slots_two_bodies():
 
 
 def test_assemble_pair_two_prompts():
+    from platepress.defaults import LAYOUT_SPLIT
+
     text = assemble_pair(
         STYLE,
         [ANDROID],
@@ -447,6 +451,7 @@ def test_assemble_pair_two_prompts():
         [ANDROID],
         "facing colossal figures in the mist, gold leaf over black glass",
         TAIL,
+        layout_text=LAYOUT_SPLIT,
         n_left_refs=1,
         n_right_refs=1,
     )
@@ -571,11 +576,77 @@ braced in a narrow hold, liquid silver
     assert "standing amidst the wreckage" in direct
 
 
+def test_blank_plate_sends_the_recipe_you_wrote():
+    ink = "Charcoal and chalk on grey board."
+    line = "One wide establishing frame, no panels."
+    closer = "Dust in the air."
+    wall = """
+p1_cargo
+braced in a narrow hold, liquid silver
+"""
+    r = parse_book(
+        wall, "", CAST, style=ink, tail=closer, layout="blank", layout_text=line
+    )
+    text = r.plates[0].assembled
+    assert ink in text
+    assert line in text
+    assert closer in text
+    assert text.find(ink) < text.find(line) < text.find(closer)
+    assert "undivided plate" not in text
+    assert "watercolor" not in text.lower()
+    direct = assemble(
+        ink, [], "standing amidst the wreckage", closer, layout="blank", layout_text=line
+    )
+    assert line in direct
+    assert "undivided plate" not in direct
+
+
+def test_blank_inline_uses_written_layout_line():
+    wall = """
+p1_dower
+left pane: She sits on the gilt chair
+right pane: He looks down from the portrait
+"""
+    r = parse_book(
+        wall,
+        "",
+        [],
+        style="My ink.",
+        tail="My closer.",
+        layout="blank",
+        layout_text="My frame.",
+    )
+    text = r.plates[0].assembled
+    assert "My ink." in text
+    assert "My frame." in text
+    assert "My closer." in text
+    assert "vertical panes" not in text
+    assert "thin black ink rule" not in text
+    assert "gilt chair" in text and "portrait" in text
+
+
 def test_assemble_clauses_are_sentences():
-    text = assemble(STYLE, [ANDROID], "standing amidst the wreckage", TAIL)
+    from platepress.defaults import LAYOUT_ONE
+
+    text = assemble(
+        STYLE, [ANDROID], "standing amidst the wreckage", TAIL, layout_text=LAYOUT_ONE
+    )
     assert "no second panel. " in text
     assert "no second panel standing" not in text
     assert ". standing amidst" in text
+
+
+def test_empty_layout_line_is_not_invented():
+    wall = """
+p1_cargo
+braced in a narrow hold, liquid silver
+"""
+    r = parse_book(wall, "", CAST, layout="one", layout_text="", style="Charcoal and chalk.")
+    text = r.plates[0].assembled
+    assert text.startswith("Charcoal and chalk.")
+    assert "undivided plate" not in text
+    assert "vertical panes" not in text
+    assert "braced in a narrow hold" in text
 
 
 def test_assemble_wall_after_settings():

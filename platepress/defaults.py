@@ -11,7 +11,7 @@ INK_PANE = (
     "Ink and watercolor, thin black outlines, "
     "cream paper, muted ochre and black."
 )
-STYLE = INK_BOS
+STYLE = ""
 
 LAYOUT_ONE = (
     "A single undivided plate, one scene, no split, no second panel."
@@ -83,36 +83,19 @@ def neg_allow_lettering(neg: str) -> str:
 
 NEG = neg_for("one")
 
+# Cards are examples, not modes. One plate adds nothing to the style box.
 EXAMPLES = {
-    "blank": {
-        "id": "blank",
-        "label": "Blank plate",
-        "blurb": "No layout sentence. One image per slug. Ink and closer stay as they are.",
-        "layout": "blank",
-        "style": None,
-        "layout_text": "",
-        "tail": None,
-        "neg": None,
-    },
     "bos": {
         "id": "bos",
-        "label": "Bos, one plate",
-        "blurb": "One image per slug. A slug may still split if it contains left pane / right pane.",
-        "layout": "one",
-        "style": INK_BOS,
-        "layout_text": LAYOUT_ONE,
-        "tail": "",
-        "neg": neg_for("one"),
+        "label": "One plate",
+        "blurb": "Removes the two-pane line from the style box. Your other text stays.",
+        "insert": "",
     },
     "split": {
         "id": "split",
-        "label": "Two-pane comic",
-        "blurb": "Consecutive slugs share one image: first left, next right.",
-        "layout": "split",
-        "style": INK_PANE,
-        "layout_text": LAYOUT_SPLIT,
-        "tail": CLOSER_SPLIT,
-        "neg": neg_for("split"),
+        "label": "Two-pane",
+        "blurb": "Adds a two-pane line to the style box. Your other text stays.",
+        "insert": LAYOUT_SPLIT,
     },
 }
 

@@ -28,8 +28,9 @@ def test_portable_paths_are_repo_relative():
     assert s["loras"] == []
     assert not s.get("lora_name")
     from platepress.defaults import EXAMPLES
-    assert EXAMPLES["bos"]["tail"] == ""
-    assert "own scene" in (EXAMPLES["split"]["tail"] or "").lower()
+    assert EXAMPLES["bos"]["insert"] == ""
+    assert "vertical panes" in EXAMPLES["split"]["insert"]
+    assert "blank" not in EXAMPLES
     assert "cutouts" in (s.get("ref_cutout_text") or "").lower()
 
 
@@ -95,7 +96,6 @@ def test_output_size_is_per_book(tmp_path, monkeypatch):
 
 def test_blank_style_save_is_not_sent(tmp_path, monkeypatch):
     from platepress import store
-    from platepress.defaults import STYLE
 
     monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
     s = store.default_settings()
@@ -110,7 +110,7 @@ def test_blank_style_save_is_not_sent(tmp_path, monkeypatch):
     assert cleared.status_code == 200
     assert cleared.json()["style"] == ""
     assert ink not in (cleared.json()["style"] or "")
-    assert STYLE.strip() not in (cleared.json()["style"] or "")
+    assert "watercolor" not in (cleared.json()["style"] or "").lower()
     book = store.load_book(store.load_settings(tmp_path / "settings.json"))
     assert book.get("style") == ""
     parsed = client.post("/api/parse", json={})
@@ -119,6 +119,112 @@ def test_blank_style_save_is_not_sent(tmp_path, monkeypatch):
     if plates:
         assert ink not in plates[0]["assembled"]
         assert "watercolor" not in plates[0]["assembled"].lower()
+
+
+def test_blank_recipe_is_what_parse_sends(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.defaults import LAYOUT_ONE, STYLE
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(app)
+    made = client.post("/api/book/new", json={"title": "Recipe", "id": "recipe"})
+    assert made.status_code == 200
+    wall = client.post("/api/book", json={
+        "prompts_raw": "p1_cargo\nbraced in a narrow hold\n",
+        "style": STYLE,
+        "tail": "OLD CLOSER",
+    })
+    assert wall.status_code == 200
+    ink = "Charcoal and chalk on grey board."
+    line = "One wide establishing frame, no panels."
+    closer = "Dust in the air."
+    saved = client.post("/api/settings", json={
+        "layout": "blank",
+        "style": ink,
+        "layout_text": line,
+        "tail": closer,
+        "neg": "no boats",
+    })
+    assert saved.status_code == 200
+    body = saved.json()
+    assert body["style"] == ink
+    assert body["layout"] == "blank"
+    assert body["layout_text"] == line
+    assert body["tail"] == closer
+    # Generate posts the book the page loaded, which still has the old ink.
+    stale = client.post("/api/book", json={
+        "prompts_raw": "p1_cargo\nbraced in a narrow hold\n",
+        "style": STYLE,
+        "tail": "OLD CLOSER",
+    })
+    assert stale.status_code == 200
+    parsed = client.post("/api/parse", json={})
+    assert parsed.status_code == 200
+    text = parsed.json()["plates"][0]["assembled"]
+    assert ink in text
+    assert line in text
+    assert closer in text
+    assert "OLD CLOSER" not in text
+    assert "undivided plate" not in text
+    assert "watercolor" not in text.lower()
+    assert LAYOUT_ONE.strip() not in text
+    reloaded = store.load_settings(tmp_path / "settings.json")
+    assert reloaded["layout"] == "blank"
+    assert reloaded["layout_text"] == line
+    assert reloaded["style"] == ink
+    assert reloaded["tail"] == closer
+
+
+def test_written_recipe_overwrites_and_is_what_is_sent(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.defaults import CLOSER_SPLIT, INK_PANE, LAYOUT_ONE
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(app)
+    made = client.post("/api/book/new", json={"title": "Plain", "id": "plain"})
+    assert made.status_code == 200
+    client.post("/api/book", json={"prompts_raw": "p1_cargo\nbraced in a narrow hold\n"})
+    saved = client.post("/api/settings", json={
+        "style": INK_PANE,
+        "layout_text": LAYOUT_ONE,
+        "tail": CLOSER_SPLIT,
+    })
+    assert saved.status_code == 200
+    assert saved.json()["style"] == INK_PANE
+    assert saved.json()["layout_text"] == LAYOUT_ONE
+    assert saved.json()["tail"] == CLOSER_SPLIT
+    first = client.post("/api/parse", json={}).json()["plates"][0]["assembled"]
+    assert INK_PANE in first
+    assert LAYOUT_ONE in first
+    assert "braced in a narrow hold" in first
+    overwritten = "ZZONLY this line."
+    again = client.post("/api/settings", json={
+        "style": overwritten,
+        "layout_text": "",
+        "tail": "",
+    })
+    assert again.status_code == 200
+    assert again.json()["style"] == overwritten
+    assert again.json()["layout_text"] == ""
+    assert again.json()["tail"] == ""
+    text = client.post("/api/parse", json={}).json()["plates"][0]["assembled"]
+    assert text.startswith(overwritten)
+    assert "watercolor" not in text.lower()
+    assert "undivided plate" not in text
+    assert "collage" not in text.lower()
+    assert "braced in a narrow hold" in text
+    cleared = client.post("/api/settings", json={"style": "", "layout_text": "", "tail": ""})
+    assert cleared.json()["style"] == ""
+    bare = client.post("/api/parse", json={}).json()["plates"][0]["assembled"]
+    assert overwritten not in bare
+    assert "watercolor" not in bare.lower()
+    assert bare.strip().startswith("braced") or "braced in a narrow hold" in bare
 
 
 def test_blank_style_stays_blank(tmp_path, monkeypatch):
@@ -156,7 +262,8 @@ def test_index_and_parse_t1(tmp_path, monkeypatch):
     slugs = [p["slug"] for p in body["plates"]]
     assert slugs == ["t1_one", "t1_two"]
     assert body["plates"][0]["risky_twoshot"] is False
-    assert "watercolor" in body["plates"][0]["assembled"].lower()
+    assert "watercolor" not in body["plates"][0]["assembled"].lower()
+    assert "cargo bay" in body["plates"][0]["assembled"].lower()
     r = client.post("/api/demo/bos")
     assert r.status_code == 200
     body = r.json()
@@ -294,11 +401,12 @@ def test_settings_includes_layout_examples(tmp_path, monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert "examples" in body and "bos" in body["examples"]
-    assert body["examples"]["blank"]["layout"] == "blank"
-    assert body["examples"]["blank"]["layout_text"] == ""
-    assert body["examples"]["split"]["layout"] == "split"
-    assert "vertical panes" in body["examples"]["split"]["layout_text"]
-    assert "Single divided" not in (body.get("tail") or "")
+    assert "blank" not in body["examples"]
+    assert body["examples"]["bos"]["insert"] == ""
+    assert "vertical panes" in body["examples"]["split"]["insert"]
+    assert "style" not in body["examples"]["bos"]
+    assert "style" not in body["examples"]["split"]
+    assert (body.get("tail") or "").startswith(" Single divided plate")
 
 
 def test_plate_name_slug_not_seed():

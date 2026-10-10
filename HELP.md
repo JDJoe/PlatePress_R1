@@ -16,12 +16,9 @@ Also in the app: **Help** tab. The header always shows the open book.
 INK (Style), layout, closer, NEG, UNET, LoRAs, sampler, images-per-plate, and output width and height belong to the **open book**. Comfy host, port, and model folders stay in shared Settings. Save settings writes INK (Style) and weights onto this book. **Publish** stores a snapshot in that folder. **Load published** puts it back; missing UNET/LoRA names warn and the rest still loads.
 
 - **Test connection** first.
-- **Style cards are the mode.** There is no separate Plate layout radio.
-- **Bos, one plate**: each slug is one image. If that slug contains `left pane:` / `right pane:`, only that plate splits.
-- **Two-pane comic**: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.
-- Click a card to fill ink, layout line, and matching negatives, and save Settings. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.
-- **INK** (Style) and **Layout line** are prepended to every plate. They live on this book. An empty INK (Style) box is refused and the factory style is put back. An empty Layout line stays empty (it is not put back).
-- **World closer** is empty on Bos. Two-pane fills “each pane is its own scene…”. Prepended only if that box has text.
+- **Example cards are not a mode.** One plate removes the two-pane line from the style box. Your other text stays. Two-pane adds that line to whatever is already there. The old watercolor ink line is not a default. Style, the layout line, and the closer are sent as written. Changing a box replaces the previous text.
+- A plate is one image per slug. If that slug contains `left pane:` / `right pane:`, only that plate splits.
+- **INK** (Style), **Layout line**, and **World closer** are prepended only when those boxes have text. An empty box adds nothing. They live on this book.
 - **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default keeps its own diptych negative.
 - Stills and locks are **Text** / **Image** on the Book table, not Settings. **Cutout** is per character on Cast.
 - **Model and LoRAs** — **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Must be a Krea 2 UNET. Saved on this book with Save settings. Comfy host, port, and model folders stay in shared Settings.

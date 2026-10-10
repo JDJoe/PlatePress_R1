@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from .defaults import LAYOUT_ONE, LAYOUT_SPLIT, METAPHORS, REF_CUTOUT, STYLE
+from .defaults import METAPHORS, REF_CUTOUT, STYLE
 
 # Preferred: p1_cargo / t1_one. Also any identifier that is not a known character.
 _SLUG_PREF = re.compile(r"^p\d+[A-Za-z]?_[A-Za-z0-9_]*$")
@@ -689,10 +689,8 @@ def assemble(
     """Ink + layout + closer + lock-if-no-still + Book wall."""
     style = style.strip()
     scene = _spacecraft(scene.strip().rstrip(".,; "))
-    if (layout or "one") == "blank":
-        lt = ""
-    else:
-        lt = (layout_text or LAYOUT_ONE).strip()
+    # Only the layout line in the box is sent. An empty box adds nothing.
+    lt = (layout_text or "").strip()
     closer = (tail or "").strip()
     lettering = (lettering or "").strip()
     if lettering:
@@ -774,10 +772,11 @@ def assemble_pair(
     cutout: bool = False,
     cutout_text: str = "",
     lettering: str = "",
+    layout: str = "split",
 ) -> str:
     """Two different scenes: left pane, right pane. Lock in a pane only if that pane has no still."""
     style = style.strip()
-    lt = (layout_text or LAYOUT_SPLIT).strip()
+    lt = (layout_text or "").strip()
     closer = (tail or "").strip()
     lettering = (lettering or "").strip()
     if lettering:
@@ -814,6 +813,7 @@ def apply_split_pairs(
     warnings: list[str],
     pair_consecutive: bool = True,
     cutout_text: str = "",
+    layout: str = "split",
 ) -> None:
     """Split only plates that ask for it. Consecutive pairing is Settings two-pane only."""
     i = 0
@@ -845,6 +845,7 @@ def apply_split_pairs(
                 cutout=pane_cutout,
                 cutout_text=cutout_text,
                 lettering=a.lettering_prompt if a.use_letter else "",
+                layout=layout,
             )
             a.assembled = text
             a.pane, a.pair_with = "inline", a.slug
@@ -882,6 +883,7 @@ def apply_split_pairs(
                 a.lettering_prompt if a.use_letter else "",
                 b.lettering_prompt if b.use_letter else "",
             ),
+            layout=layout,
         )
         a.assembled = text
         b.assembled = text
@@ -1037,7 +1039,7 @@ def parse_book(
             cutout=plate_cutout,
             cutout_text=cutout_text,
             layout=layout or "one",
-            layout_text="" if (layout or "one") == "blank" else (layout_text or LAYOUT_ONE),
+            layout_text=(layout_text or "").strip(),
             lettering=lettering_prompt if use_letter else "",
         )
         plates.append(
@@ -1073,7 +1075,7 @@ def parse_book(
             by_name,
             style,
             tail,
-            layout_text or LAYOUT_SPLIT,
+            (layout_text or "").strip(),
             n_pictures_for,
             cutout,
             warnings,
@@ -1086,12 +1088,13 @@ def parse_book(
             by_name,
             style,
             tail,
-            LAYOUT_SPLIT,
+            (layout_text or "").strip(),
             n_pictures_for,
             cutout,
             warnings,
             pair_consecutive=False,
             cutout_text=cutout_text,
+            layout=layout or "one",
         )
 
     return ParseResult(plates=plates, warnings=warnings)
