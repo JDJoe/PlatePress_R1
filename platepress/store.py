@@ -399,6 +399,7 @@ def book_snapshot(book: dict[str, Any], gen: dict[str, Any] | None = None) -> di
     snap["characters"] = book.get("characters") or []
     snap["slug_opts"] = book.get("slug_opts") or {}
     snap["workflow"] = book.get("workflow")
+    snap["workflow_ref"] = book.get("workflow_ref")
     snap["ref_cutout_text"] = book.get("ref_cutout_text")
     return snap
 
@@ -414,6 +415,7 @@ def apply_snapshot(book: dict[str, Any], snap: dict[str, Any]) -> dict[str, Any]
         "characters",
         "slug_opts",
         "workflow",
+        "workflow_ref",
         "ref_cutout_text",
     ):
         if key in snap:
@@ -490,15 +492,116 @@ def list_api_workflows(settings: dict[str, Any], book_id: str | None = None) -> 
 
 
 def job_workflows(settings: dict[str, Any], book: dict[str, Any]) -> tuple[Path, Path]:
-    """Book API graph overrides Settings for both text and stills."""
+    """Book API graph overrides Settings. A second book file is the stills graph."""
     raw = str(book.get("workflow") or "").strip()
     if raw:
-        p = resolve_user_path(raw)
-        return p, p
+        text = resolve_user_path(raw)
+        ref_raw = str(book.get("workflow_ref") or "").strip()
+        ref = resolve_user_path(ref_raw) if ref_raw else text
+        return text, ref
     text_wf = resolve_user_path(str(settings.get("workflow_text") or ""))
     ref_raw = str(settings.get("workflow_ref") or "").strip()
     ref_wf = resolve_user_path(ref_raw) if ref_raw else Path()
     return text_wf, ref_wf
+
+
+def _under_dir(folder: Path, path: Path) -> bool:
+    try:
+        path.resolve().relative_to(folder.resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+
+
+def resolve_api_workflow(value: str) -> Path | None:
+    """API graph for a settings or book path. A UI graph uses its *-API.json sibling."""
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    path = resolve_user_path(raw, follow_symlinks=False)
+    if not path.is_file():
+        return None
+    if is_api_workflow(path):
+        return path
+    if path.stem.endswith("-API"):
+        return None
+    sibling = path.with_name(f"{path.stem}-API.json")
+    if sibling.is_file() and is_api_workflow(sibling):
+        return sibling
+    return None
+
+
+def persist_book_workflow(settings: dict[str, Any], book: dict[str, Any]) -> dict[str, Any]:
+    """Copy this book's API graph into books/<id>/workflows and stamp its recipe.
+
+    UNET, LoRAs, sampler, size, and a CLIP negative are written into the copy.
+    Prompt and seed stay empty until Generate. A book that has not picked a
+    file gets the Settings graph (the API sibling, when Settings names a UI graph).
+    An existing file in the book folder keeps its nodes; the recipe is stamped again.
+    """
+    from .workflow_adapter import AdapterError, load_workflow, stamp_recipe
+
+    bid = str(book.get("id") or "").strip()
+    if not bid:
+        return book
+    folder = book_dir(settings, bid) / "workflows"
+    folder.mkdir(parents=True, exist_ok=True)
+    gen = merge_book_settings(settings, book)
+
+    chosen = str(book.get("workflow") or "").strip()
+    if chosen:
+        text_src = resolve_api_workflow(chosen)
+        ref_chosen = str(book.get("workflow_ref") or "").strip()
+        ref_src = resolve_api_workflow(ref_chosen) if ref_chosen else None
+    else:
+        text_src = resolve_api_workflow(str(settings.get("workflow_text") or ""))
+        ref_src = resolve_api_workflow(str(settings.get("workflow_ref") or ""))
+        if text_src is not None and ref_src is not None and text_src.resolve() == ref_src.resolve():
+            ref_src = None
+
+    def place(src: Path | None) -> str | None:
+        if src is None:
+            return None
+        dest = src if _under_dir(folder, src) else folder / src.name
+        if dest != src and not dest.exists():
+            shutil.copy2(src, dest)
+        elif dest != src and dest.exists() and not is_api_workflow(dest):
+            shutil.copy2(src, dest)
+        try:
+            stamped = stamp_recipe(
+                load_workflow(dest),
+                unet_name=str(gen.get("unet_name") or "").strip() or None,
+                loras=normalize_loras(gen),
+                steps=gen.get("steps"),
+                cfg=gen.get("cfg"),
+                sampler_name=str(gen.get("sampler_name") or "").strip() or None,
+                scheduler=str(gen.get("scheduler") or "").strip() or None,
+                width=gen.get("image_width"),
+                height=gen.get("image_height"),
+                negative=str(gen.get("neg") or ""),
+            )
+        except (AdapterError, OSError, json.JSONDecodeError):
+            if dest.is_file():
+                return portable_path(dest, follow_symlinks=False)
+            return None
+        text = json.dumps(stamped, indent=2) + "\n"
+        try:
+            same = dest.is_file() and dest.read_text(encoding="utf-8") == text
+        except (OSError, UnicodeDecodeError):
+            same = False
+        if not same:
+            dest.write_text(text, encoding="utf-8")
+        return portable_path(dest, follow_symlinks=False)
+
+    text_saved = place(text_src)
+    if text_saved:
+        book["workflow"] = text_saved
+    ref_saved = place(ref_src) if ref_src is not None else None
+    if ref_saved and ref_saved != book.get("workflow"):
+        book["workflow_ref"] = ref_saved
+    elif not str(book.get("workflow_ref") or "").strip():
+        book.pop("workflow_ref", None)
+    return book
 
 
 def load_book(settings: dict[str, Any], book_id: str | None = None, create: bool = True) -> dict[str, Any]:

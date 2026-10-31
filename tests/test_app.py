@@ -810,6 +810,98 @@ def test_list_api_workflows_skips_ui_graph():
     assert "Krea2T_V3_ref_clean03.json" not in names
 
 
+def test_persist_book_workflow_copies_and_stamps(tmp_path):
+    from platepress import store
+
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    s["unet_name"] = "KREA2/book_model.safetensors"
+    s["loras"] = [{"name": "style/book.safetensors", "strength": 0.66}]
+    s["image_width"] = 768
+    s["image_height"] = 1376
+    s["steps"] = 9
+    book = {"id": "horror1", "title": "Horror1", "workflow": None}
+    store.copy_gen_into_book(book, s)
+    store.persist_book_workflow(s, book)
+    saved = Path(book["workflow"])
+    assert saved.is_file()
+    assert saved.parent == tmp_path / "books" / "horror1" / "workflows"
+    assert saved.name == store.DEFAULT_API_WORKFLOW
+    data = json.loads(saved.read_text(encoding="utf-8"))
+    assert data["6"]["inputs"]["unet_name"] == "KREA2/book_model.safetensors"
+    assert data["27"]["inputs"]["lora_01"] == "style/book.safetensors"
+    assert data["27"]["inputs"]["strength_01"] == 0.66
+    assert data["25"]["inputs"]["value"] == 768
+    assert data["26"]["inputs"]["value"] == 1376
+    assert data["15"]["inputs"]["steps"] == 9
+    # A second save stamps the book copy and does not add another file.
+    book["loras"] = [{"name": "style/book.safetensors", "strength": 0.4}]
+    store.persist_book_workflow(s, book)
+    again = json.loads(saved.read_text(encoding="utf-8"))
+    assert again["27"]["inputs"]["strength_01"] == 0.4
+    assert list(saved.parent.glob("*.json")) == [saved]
+    text_wf, ref_wf = store.job_workflows(s, book)
+    assert text_wf == ref_wf
+    assert text_wf.name == saved.name
+
+
+def test_persist_book_workflow_uses_api_sibling(tmp_path):
+    from platepress import store
+
+    ui = tmp_path / "mine.json"
+    api = tmp_path / "mine-API.json"
+    ui.write_text('{"nodes": [], "links": []}\n', encoding="utf-8")
+    src = store.ROOT / store.DEFAULT_API_WORKFLOW
+    api.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    s["workflow_text"] = str(ui)
+    s["workflow_ref"] = str(ui)
+    s["unet_name"] = "KREA2/from_ui.safetensors"
+    book = {"id": "alpha", "workflow": None, "unet_name": "KREA2/from_ui.safetensors"}
+    store.persist_book_workflow(s, book)
+    saved = Path(book["workflow"])
+    assert saved.name == "mine-API.json"
+    assert saved.parent.name == "workflows"
+    data = json.loads(saved.read_text(encoding="utf-8"))
+    assert data["6"]["inputs"]["unet_name"] == "KREA2/from_ui.safetensors"
+    assert "nodes" not in data
+
+
+def test_settings_save_writes_workflow_into_the_book(tmp_path, monkeypatch):
+    from platepress import store
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(app)
+    made = client.post("/api/book/new", json={"title": "Horror1", "id": "horror1"})
+    assert made.status_code == 200
+    r = client.post("/api/settings", json={
+        "unet_name": "KREA2/fascium.safetensors",
+        "loras": [{"name": "KREA2/L2L/ink.safetensors", "strength": 0.7}],
+        "image_width": 768,
+        "image_height": 1376,
+        "sampler_name": "euler",
+        "scheduler": "beta",
+        "steps": 8,
+        "cfg": 1,
+    })
+    assert r.status_code == 200
+    folder = tmp_path / "books" / "horror1" / "workflows"
+    files = list(folder.glob("*.json"))
+    assert len(files) == 1
+    data = json.loads(files[0].read_text(encoding="utf-8"))
+    assert data["6"]["inputs"]["unet_name"] == "KREA2/fascium.safetensors"
+    assert data["27"]["inputs"]["lora_01"] == "KREA2/L2L/ink.safetensors"
+    assert data["25"]["inputs"]["value"] == 768
+    book = json.loads((tmp_path / "books" / "horror1" / "book.json").read_text(encoding="utf-8"))
+    assert book["workflow"]
+    assert book["unet_name"] == "KREA2/fascium.safetensors"
+    assert Path(book["workflow"]).is_file()
+
+
 def test_job_workflows_book_override(tmp_path):
     from platepress import store
 

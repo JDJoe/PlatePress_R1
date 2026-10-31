@@ -724,6 +724,7 @@ async function saveBookSilent() {
   book.slug_opts = collectSlugOpts();
   if ($("ref_cutout_text")) book.ref_cutout_text = $("ref_cutout_text").value;
   const wf = $("book-workflow");
+  const picked = wf ? wf.value : "";
   if (wf) book.workflow = wf.value || null;
   const r = await j("/api/book", {
     method: "POST",
@@ -732,6 +733,7 @@ async function saveBookSilent() {
   });
   book = r.book;
   showCurrentBook();
+  if (wf && (book.workflow || "") !== (picked || "")) await fillWorkflowSelect();
 }
 
 async function fillWorkflowSelect() {

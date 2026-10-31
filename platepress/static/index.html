@@ -110,7 +110,7 @@
           <div class="panel-head split">
             <div>
               <h3>Model and LoRAs</h3>
-              <p class="tiny">These swap files inside the V3 graph. Do not export a new API workflow. CLIP and VAE stay as they are. The diffusion model must be <strong>Krea 2</strong>.</p>
+              <p class="tiny">Saved on this book. Save settings writes the UNET and LoRAs into this book’s workflow file. CLIP and VAE stay as they are in the graph. The diffusion model must be <strong>Krea 2</strong>.</p>
             </div>
             <button type="button" class="act ghost" id="scan-weights">Load lists from Comfy</button>
           </div>
@@ -277,7 +277,7 @@
           </div>
           <details class="sub">
             <summary>About custom workflows</summary>
-            <p class="tiny">This book only. Default is Settings <code>default_comfyUI-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs and output width and height still apply. The save prefix is still filled so Queue can find files.</p>
+            <p class="tiny">Saving this book copies the API graph into <code>books/&lt;id&gt;/workflows/</code> and writes this book’s UNET, LoRAs, sampler, and size into that file. Prompt and seed are still filled at Generate. Default follows Settings until the first save. To customize nodes, edit that copy, or drop another <strong>Save (API Format)</strong> JSON in the folder, Refresh, and pick it. Extra nodes stay.</p>
           </details>
         </div>
 
@@ -436,8 +436,8 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
                 <li>A plate is one image per slug. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
                 <li><strong>Ink</strong>, <strong>Layout line</strong>, and <strong>World closer</strong> are prepended only when those boxes have text. An empty box adds nothing.</li>
                 <li>On Book, each slug has <strong>Text</strong>, <strong>Image</strong>, and <strong>letter</strong>. All start off. Text inserts the Cast lock. Image sends the still. letter sends captions and balloons to Comfy on the plate (same size, no bar under the image). Header checkboxes select or clear a column.</li>
-                <li><strong>Model and LoRAs</strong> — shared Settings. <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Not saved on the book.</li>
-                <li><strong>API workflow</strong> is per book. Default is Settings <code>default_comfyUI-API.json</code>. Open the default in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, put the JSON in this book’s <code>workflows/</code> folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.</li>
+                <li><strong>Model and LoRAs</strong> belong to the open book. <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Save settings writes them into this book’s folder and into its workflow file.</li>
+                <li><strong>API workflow</strong> is per book. Save copies it to <code>books/&lt;id&gt;/workflows/</code> with this book’s UNET, LoRAs, sampler, and size. Prompt and seed are filled at Generate. Edit that copy, or drop another <strong>Save (API Format)</strong> JSON in the folder and pick it. Extra nodes stay.</li>
                 <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
               </ul>
             </article>
@@ -526,6 +526,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </section>
     </main>
   </div>
-  <script src="/static/app.js?v=66"></script>
+  <script src="/static/app.js?v=67"></script>
 </body>
 </html>

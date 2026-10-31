@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from platepress.store import DEFAULT_API_WORKFLOW
-from platepress.workflow_adapter import detect, fill, load_workflow
+from platepress.workflow_adapter import detect, fill, load_workflow, stamp_recipe
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -226,6 +226,69 @@ def test_fill_unet_and_lora_stack():
     assert out["27"]["inputs"]["lora_03"] == "None"
     assert out["27"]["inputs"]["strength_03"] == 0.0
     assert out["27"]["inputs"]["lora_04"] == "None"
+
+
+def test_stamp_recipe_writes_models_and_leaves_prompt():
+    wf = load_workflow(V3)
+    prompt_before = wf["13"]["inputs"]["prompt"]
+    seed_before = wf["15"]["inputs"]["seed"]
+    out = stamp_recipe(
+        wf,
+        unet_name="KREA2/other.safetensors",
+        loras=[{"name": "style/one.safetensors", "strength": 0.55}],
+        steps=9,
+        cfg=1.1,
+        sampler_name="euler",
+        scheduler="beta",
+        width=768,
+        height=1376,
+        negative="should not replace the qwen diptych ban",
+    )
+    assert out["6"]["inputs"]["unet_name"] == "KREA2/other.safetensors"
+    assert out["27"]["inputs"]["lora_01"] == "style/one.safetensors"
+    assert out["27"]["inputs"]["strength_01"] == 0.55
+    assert out["27"]["inputs"]["lora_02"] == "None"
+    assert out["15"]["inputs"]["steps"] == 9
+    assert out["15"]["inputs"]["cfg"] == 1.1
+    assert out["25"]["inputs"]["value"] == 768
+    assert out["26"]["inputs"]["value"] == 1376
+    assert out["13"]["inputs"]["prompt"] == prompt_before
+    assert out["15"]["inputs"]["seed"] == seed_before
+    assert "diptych" in out["14"]["inputs"]["prompt"]
+
+
+def test_stamp_recipe_single_lora_loader():
+    wf = {
+        "1": {
+            "inputs": {"unet_name": "old.safetensors", "weight_dtype": "default"},
+            "class_type": "UNETLoader",
+        },
+        "2": {
+            "inputs": {
+                "lora_name": "old_lora.safetensors",
+                "strength_model": 0.2,
+                "strength_clip": 1,
+                "model": ["1", 0],
+                "clip": ["10", 0],
+            },
+            "class_type": "LoraLoader",
+        },
+        "8": {
+            "inputs": {"seed": 4, "steps": 8, "cfg": 1, "sampler_name": "euler", "scheduler": "simple"},
+            "class_type": "KSampler",
+        },
+    }
+    out = stamp_recipe(
+        wf,
+        unet_name="ZIMAGE/z.safetensors",
+        loras=[{"name": "ZIM_LORA/ink.safetensors", "strength": 0.8}],
+    )
+    assert out["1"]["inputs"]["unet_name"] == "ZIMAGE/z.safetensors"
+    assert out["2"]["inputs"]["lora_name"] == "ZIM_LORA/ink.safetensors"
+    assert out["2"]["inputs"]["strength_model"] == 0.8
+    assert out["2"]["inputs"]["strength_clip"] == 0.8
+    assert "lora_01" not in out["2"]["inputs"]
+    assert out["8"]["inputs"]["seed"] == 4
 
 
 def test_fill_sets_widescreen_on_width_height_nodes():

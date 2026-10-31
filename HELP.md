@@ -13,7 +13,7 @@ Also in the app: **Help** tab. The header always shows the open book.
 
 ## Settings
 
-INK (Style), layout, closer, NEG, UNET, LoRAs, sampler, images-per-plate, and output width and height belong to the **open book**. Comfy host, port, and model folders stay in shared Settings. Save settings writes INK (Style) and weights onto this book. **Publish** stores a snapshot in that folder. **Load published** puts it back; missing UNET/LoRA names warn and the rest still loads.
+INK (Style), layout, closer, NEG, UNET, LoRAs, sampler, images-per-plate, and output width and height belong to the **open book**. Comfy host, port, and model folders stay in shared Settings. Save settings writes that recipe onto this book and into `books/<id>/workflows/` (the API graph plus UNET, LoRAs, sampler, and size). **Publish** stores a snapshot in that folder. **Load published** puts it back; missing UNET/LoRA names warn and the rest still loads.
 
 - **Test connection** first.
 - **Example cards are not a mode.** One plate removes the two-pane line from the style box. Your other text stays. Two-pane adds that line to whatever is already there. The old watercolor ink line is not a default. Style, the layout line, and the closer are sent as written. Changing a box replaces the previous text.
@@ -25,7 +25,7 @@ INK (Style), layout, closer, NEG, UNET, LoRAs, sampler, images-per-plate, and ou
 - **Output size** is this book’s plate width and height. 16:9 is 1920 × 1080. A book that has never set a size stays 1280 × 1280. Save settings writes it onto this book. Generate writes those numbers into the API graph (the width and height value nodes, or the latent node if they are plain numbers).
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
 
-API graph: `default_comfyUI-API.json` (text and stills; Qwen encode + ReferenceLatent when a still is on; unused LoadImage nodes are dropped). **Per book:** open that default in Comfy, change nodes or parameters, **Save (API Format)**, drop the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, output width and height, and the save prefix. The UI twin is `default_comfyUI.json`.
+API graph: `default_comfyUI-API.json` (text and stills; Qwen encode + ReferenceLatent when a still is on; unused LoadImage nodes are dropped). **Per book:** Save copies that graph into this book’s `workflows/` folder and writes the book’s UNET, LoRAs, sampler, and size into the copy. Prompt and seed are still filled at Generate. To change nodes, edit that copy, or **Save (API Format)** from Comfy, drop the JSON in the book’s `workflows/` folder, and pick it. Extra nodes stay. The UI twin is `default_comfyUI.json`. A Settings path that names a UI graph uses the `*-API.json` sibling.
 
 ## Cast
 

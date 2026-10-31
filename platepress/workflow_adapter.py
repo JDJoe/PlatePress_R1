@@ -240,6 +240,104 @@ def _set_size(wf: Workflow, node_id: str, key: str, value: int) -> None:
     _set(wf, node_id, key, int(value))
 
 
+def _lora_slots(loras: list[dict[str, Any]] | None) -> list[tuple[str, float]]:
+    slots: list[tuple[str, float]] = []
+    for item in loras or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name or name.lower() == "none":
+            continue
+        try:
+            strength = float(item.get("strength") or 0)
+        except (TypeError, ValueError):
+            strength = 0.0
+        slots.append((name, strength))
+        if len(slots) == 4:
+            break
+    return slots
+
+
+def _stamp_loras(wf: Workflow, slots: list[tuple[str, float]]) -> None:
+    """Write LoRA names onto a stack node, or one name per LoraLoader."""
+    found: list[tuple[int, str, dict[str, Any]]] = []
+    for nid, node in wf.items():
+        if not isinstance(node, dict):
+            continue
+        ct = str(node.get("class_type") or "")
+        if "lora" not in ct.lower():
+            continue
+        inputs = node.get("inputs") if isinstance(node.get("inputs"), dict) else {}
+        order = int(nid) if str(nid).isdigit() else 0
+        found.append((order, str(nid), inputs))
+    found.sort()
+    if not found:
+        return
+    for _, nid, inputs in found:
+        if any(k.startswith("lora_0") and len(k) > 6 and k[6].isdigit() for k in inputs):
+            for i in range(1, 5):
+                if i <= len(slots):
+                    _set(wf, nid, f"lora_0{i}", slots[i - 1][0])
+                    _set(wf, nid, f"strength_0{i}", slots[i - 1][1])
+                else:
+                    _set(wf, nid, f"lora_0{i}", "None")
+                    _set(wf, nid, f"strength_0{i}", 0.0)
+            return
+    for i, (_, nid, inputs) in enumerate(found):
+        if i >= len(slots):
+            break
+        name, strength = slots[i]
+        if "lora_name" in inputs:
+            _set(wf, nid, "lora_name", name)
+        if "strength_model" in inputs:
+            _set(wf, nid, "strength_model", strength)
+        if "strength_clip" in inputs:
+            _set(wf, nid, "strength_clip", strength)
+        if "strength" in inputs and "strength_model" not in inputs:
+            _set(wf, nid, "strength", strength)
+
+
+def stamp_recipe(
+    workflow: Workflow,
+    *,
+    unet_name: str | None = None,
+    loras: list[dict[str, Any]] | None = None,
+    steps: int | None = None,
+    cfg: float | None = None,
+    sampler_name: str | None = None,
+    scheduler: str | None = None,
+    width: int | None = None,
+    height: int | None = None,
+    negative: str | None = None,
+) -> Workflow:
+    """Write book-level models, sampler, and size into a graph. Leave prompt and seed."""
+    wf = copy.deepcopy(workflow)
+    nmap = detect(wf)
+    if nmap.unet and unet_name:
+        _set(wf, nmap.unet, "unet_name", unet_name)
+    _stamp_loras(wf, _lora_slots(loras))
+    if nmap.sampler and nmap.sampler in wf:
+        samp = wf[nmap.sampler].setdefault("inputs", {})
+        if steps is not None:
+            samp["steps"] = int(steps)
+        if cfg is not None:
+            samp["cfg"] = float(cfg)
+        if sampler_name:
+            samp["sampler_name"] = sampler_name
+        if scheduler:
+            samp["scheduler"] = scheduler
+    if nmap.latent:
+        if width is not None:
+            _set_size(wf, nmap.latent, "width", int(width))
+        if height is not None:
+            _set_size(wf, nmap.latent, "height", int(height))
+    if negative and nmap.negative and nmap.negative_has_text:
+        neg_ct = (wf.get(nmap.negative) or {}).get("class_type") or ""
+        if neg_ct == "CLIPTextEncode":
+            _set(wf, nmap.negative, nmap.negative_key or "text", negative)
+    return wf
+
+
 def fill(
     workflow: Workflow,
     *,

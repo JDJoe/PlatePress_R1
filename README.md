@@ -44,7 +44,7 @@ Stills and locks are per slug on the Book table (**Text** / **Image** columns). 
 
 Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
 
-**Model and LoRAs** live in Settings (shared). **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Bare filenames fail. Must be a **Krea 2** UNET. Up to four LoRAs. CLIP and VAE stay as in the graph. Changing UNET/LoRA here does not write them into the book.
+**Model and LoRAs** belong to the open book. **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Bare filenames fail. Must be a **Krea 2** UNET. Up to four LoRAs. CLIP and VAE stay as in the graph. Save settings writes the UNET, LoRAs, sampler, and size into `books/<id>/workflows/` on a copy of the API graph.
 
 ## Cast (per book)
 
@@ -85,7 +85,7 @@ The app assembles **ink, layout line, closer (if that box has text), Book wall**
 
 Two-pane: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 
-**API workflow** is per book. Default is Settings `default_comfyUI-API.json`. To customize: open the default graph in Comfy, change nodes or parameters, **Save (API Format)**, put the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), then pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix. If that graph has a CLIP negative node, Settings NEG is written there. The shipped default keeps its own diptych negative.
+**API workflow** is per book. Save copies Settings `default_comfyUI-API.json` (or the book’s picked file) into `books/<id>/workflows/` and writes this book’s UNET, LoRAs, sampler, and size into that copy. Prompt and seed are filled at Generate. To customize nodes, edit that copy, or **Save (API Format)** in Comfy, put the JSON in this book’s `workflows/` folder, and pick it. Extra nodes stay. If that graph has a CLIP negative node, the book’s NEG is written there. The shipped default keeps its own diptych negative.
 
 **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (identity notes, not prompt prefix).
 

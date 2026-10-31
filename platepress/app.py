@@ -59,7 +59,9 @@ from .store import (
     merge_book_settings,
     normalize_loras,
     new_id,
+    persist_book_workflow,
     portable_path,
+    resolve_user_path,
     safe_book_id,
     save_book,
     save_settings,
@@ -573,6 +575,7 @@ def post_settings(body: dict[str, Any]) -> dict[str, Any]:
         if key not in BOOK_GEN_KEYS:
             s[key] = val
     save_settings(s)
+    persist_book_workflow(s, book)
     save_book(s, book)
     return _settings_for_ui()
 
@@ -669,14 +672,21 @@ def post_book(body: dict[str, Any]) -> dict[str, Any]:
             continue
         if k == "workflow":
             raw = body[k]
+            previous = book.get("workflow")
             if raw:
                 book[k] = portable_path(raw, follow_symlinks=False)
+                # A new pick is one file for both. Saving the current path
+                # keeps a separate stills graph when this book has one.
+                if not _same_user_path(previous, book[k]):
+                    book["workflow_ref"] = None
             else:
                 book[k] = None
+                book["workflow_ref"] = None
         else:
             book[k] = body[k]
     if "characters" in body:
         _assert_unique_names(book.get("characters") or [])
+    persist_book_workflow(s, book)
     save_book(s, book)
     return {"book": _book_payload(s, book), "dir": str(book_dir(s))}
 
@@ -1644,6 +1654,18 @@ def post_export() -> dict[str, Any]:
     return {"dir": str(exp), "lettered": n}
 
 
+def _same_user_path(a: Any, b: Any) -> bool:
+    sa, sb = str(a or "").strip(), str(b or "").strip()
+    if not sa or not sb:
+        return sa == sb
+    try:
+        return resolve_user_path(sa, follow_symlinks=False) == resolve_user_path(
+            sb, follow_symlinks=False
+        )
+    except OSError:
+        return sa == sb
+
+
 def _contained(root: Path, p: Path) -> bool:
     try:
         p.resolve().relative_to(root.resolve())
@@ -1681,6 +1703,13 @@ def post_book_new(body: dict[str, Any] | None = None) -> dict[str, Any]:
     book = empty_book(bid)
     book["title"] = title
     copy_gen_into_book(book, src)
+    prev_wf = str(prev.get("workflow") or "").strip()
+    if prev_wf:
+        book["workflow"] = prev_wf
+    prev_ref = str(prev.get("workflow_ref") or "").strip()
+    if prev_ref:
+        book["workflow_ref"] = prev_ref
+    persist_book_workflow(s, book)
     save_book(s, book)
     return {"book": _book_payload(s, book), "books": list_books(s), "dir": str(book_dir(s))}
 
@@ -1698,6 +1727,8 @@ def post_book_open(body: dict[str, Any]) -> dict[str, Any]:
     s["current_book"] = bid
     save_settings(s)
     book = load_book(s)
+    persist_book_workflow(s, book)
+    save_book(s, book)
     return {"book": _book_payload(s, book), "books": list_books(s), "dir": str(book_dir(s))}
 
 
@@ -1793,6 +1824,7 @@ def post_publish_load(body: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(400, "bad snapshot")
     book = load_book(s)
     apply_snapshot(book, snap)
+    persist_book_workflow(s, book)
     save_book(s, book)
     ui = _settings_for_ui(s)
     warnings = _weight_warnings(ui)
