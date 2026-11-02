@@ -180,6 +180,92 @@ def test_fill_two_stills_keeps_image2():
     assert out["15"]["inputs"]["positive"] == ["23", 0]
 
 
+def test_text_only_graph_gains_reference_image_node():
+    """A book API graph with no LoadImage still has to carry the still.
+
+    Comfy writes the queued prompt into the PNG. Without a LoadImage node,
+    reopening that plate shows no reference.
+    """
+    wf = {
+        "2": {
+            "inputs": {"vae_name": "vae.safetensors"},
+            "class_type": "VAELoader",
+            "_meta": {"title": "Load VAE"},
+        },
+        "3": {
+            "inputs": {"clip_name": "clip.safetensors", "type": "krea2"},
+            "class_type": "CLIPLoader",
+        },
+        "6": {
+            "inputs": {"unet_name": "unet.safetensors"},
+            "class_type": "UNETLoader",
+        },
+        "13": {
+            "inputs": {"prompt": "", "clip": ["27", 1]},
+            "class_type": "TextEncodeQwenImageEditPlus",
+            "_meta": {"title": "TextEncodeQwenImageEditPlus (Positive)"},
+        },
+        "14": {
+            "inputs": {"prompt": "diptych", "clip": ["3", 0]},
+            "class_type": "TextEncodeQwenImageEditPlus",
+            "_meta": {"title": "Negative"},
+        },
+        "15": {
+            "inputs": {
+                "seed": 1,
+                "steps": 8,
+                "cfg": 1,
+                "sampler_name": "euler",
+                "scheduler": "beta",
+                "positive": ["30", 0],
+                "negative": ["14", 0],
+                "latent_image": ["24", 0],
+            },
+            "class_type": "KSampler",
+        },
+        "24": {
+            "inputs": {"width": 512, "height": 512, "batch_size": 1},
+            "class_type": "EmptySD3LatentImage",
+        },
+        "27": {
+            "inputs": {"lora_01": "None", "strength_01": 0, "model": ["6", 0], "clip": ["3", 0]},
+            "class_type": "Lora Loader Stack (rgthree)",
+        },
+        "30": {
+            "inputs": {"conditioning": ["13", 0], "strength": 20},
+            "class_type": "KreaSeedVarianceEnhancer",
+        },
+    }
+    out = fill(
+        wf,
+        positive="image1 is it.",
+        negative="neg",
+        seed=1,
+        prefix="PP_x",
+        lora_name="foo.safetensors",
+        lora_strength=0.5,
+        image_names=["STAGE1_ENH_ORIGP_00161_.png"],
+    )
+    loaders = [nid for nid, node in out.items() if node.get("class_type") == "LoadImage"]
+    refs = [nid for nid, node in out.items() if node.get("class_type") == "ReferenceLatent"]
+    vaes = [nid for nid, node in out.items() if node.get("class_type") == "VAEEncode"]
+    assert len(loaders) == 1 and len(refs) == 1 and len(vaes) == 1
+    load_id, ref_id, vae_id = loaders[0], refs[0], vaes[0]
+    assert out[load_id]["inputs"]["image"] == "STAGE1_ENH_ORIGP_00161_.png"
+    assert out["13"]["inputs"]["image1"] == [load_id, 0]
+    assert out[ref_id]["inputs"]["conditioning"] == ["13", 0]
+    assert out[ref_id]["inputs"]["latent"] == [vae_id, 0]
+    assert out[vae_id]["inputs"]["pixels"] == [load_id, 0]
+    assert out[vae_id]["inputs"]["vae"] == ["2", 0]
+    assert out["30"]["inputs"]["conditioning"] == [ref_id, 0]
+    assert out["15"]["inputs"]["positive"] == ["30", 0]
+    ids = set(out)
+    for node in out.values():
+        for val in (node.get("inputs") or {}).values():
+            if isinstance(val, list) and val:
+                assert str(val[0]) in ids
+
+
 def test_fill_legacy_qwen_graph_still_works():
     wf = QWEN_MIN
     m = detect(wf)

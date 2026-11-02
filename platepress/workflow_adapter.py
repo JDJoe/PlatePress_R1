@@ -214,12 +214,81 @@ def prune_unused_refs(wf: Workflow, nmap: NodeMap, n_images: int) -> None:
             wf.pop(nid, None)
 
 
-def _retarget_links(wf: Workflow, old_id: str, new_link: list) -> None:
+def _fresh_id(wf: Workflow) -> str:
+    nums = [int(k) for k in wf if str(k).isdigit()]
+    n = max(nums, default=0) + 1
+    while str(n) in wf:
+        n += 1
+    return str(n)
+
+
+def _add_missing_loaders(wf: Workflow, nmap: NodeMap, n_images: int) -> None:
+    """A text-only API graph has no LoadImage. Add one per still.
+
+    The queued prompt is what Comfy writes into the PNG. Without these nodes
+    the reference is uploaded and then dropped, so reloading the plate in
+    ComfyUI shows no image.
+    """
+    if n_images <= 0 or not nmap.positive:
+        return
+    ct = (wf.get(nmap.positive) or {}).get("class_type")
+    if ct not in _PROMPT_ENCODERS:
+        return
+    while len(nmap.load_images) < n_images:
+        nid = _fresh_id(wf)
+        wf[nid] = {
+            "inputs": {"image": "example.png"},
+            "class_type": "LoadImage",
+            "_meta": {"title": "Load Image"},
+        }
+        nmap.load_images.append(nid)
+
+
+def _insert_reference_latent(wf: Workflow, nmap: NodeMap) -> None:
+    """Put ReferenceLatent between the positive encode and whatever read it.
+
+    The shipped still graph already has this chain. A text-only book graph does
+    not. The VAE stays off the encode node — that path pastes a diptych. The
+    first LoadImage is the latent source, matching default_comfyUI-API.json.
+    """
+    if nmap.ref_latent and nmap.ref_latent in wf:
+        return
+    if not nmap.positive or not nmap.vae or not nmap.load_images:
+        return
+    if nmap.load_images[0] not in wf:
+        return
+    enc = _fresh_id(wf)
+    wf[enc] = {
+        "inputs": {
+            "pixels": [nmap.load_images[0], 0],
+            "vae": [nmap.vae, 0],
+        },
+        "class_type": "VAEEncode",
+        "_meta": {"title": "VAE Encode"},
+    }
+    ref = _fresh_id(wf)
+    wf[ref] = {
+        "inputs": {
+            "conditioning": [nmap.positive, 0],
+            "latent": [enc, 0],
+        },
+        "class_type": "ReferenceLatent",
+        "_meta": {"title": "Set Reference Latent"},
+    }
+    _retarget_links(wf, nmap.positive, [ref, 0], skip={ref})
+    nmap.ref_vae_encode = enc
+    nmap.ref_latent = ref
+
+
+def _retarget_links(
+    wf: Workflow, old_id: str, new_link: list, skip: set[str] | None = None
+) -> None:
     """Point every input that read old_id at new_link. Keeps nodes downstream of a removed node."""
     old_id = str(old_id)
+    skipped = skip or set()
     replacement = [str(new_link[0]), int(new_link[1]) if len(new_link) > 1 else 0]
-    for node in wf.values():
-        if not isinstance(node, dict):
+    for nid, node in wf.items():
+        if str(nid) in skipped or not isinstance(node, dict):
             continue
         inputs = node.get("inputs") or {}
         for key, val in inputs.items():
@@ -414,7 +483,8 @@ def fill(
         _set(wf, nmap.save, "filename_prefix", prefix)
 
     n_img = len(image_names)
-    if nmap.is_ref_workflow:
+    _add_missing_loaders(wf, nmap, n_img)
+    if nmap.is_ref_workflow or nmap.load_images:
         prune_unused_refs(wf, nmap, n_img)
         for i, name in enumerate(image_names):
             if i >= len(nmap.load_images):
@@ -422,6 +492,8 @@ def fill(
             if nmap.load_images[i] not in wf:
                 break
             _set(wf, nmap.load_images[i], "image", name)
+        if n_img:
+            _insert_reference_latent(wf, nmap)
         # Do not run the Kontext ref-latent path: it stamps/clones the still
         # into the plate (diptych, twin cosmonauts). Sampler reads encode only.
         # Keep ConditioningKrea2Rebalance between encode and sampler.

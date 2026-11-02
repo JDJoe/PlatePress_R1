@@ -1,0 +1,270 @@
+{
+  "2": {
+    "inputs": {
+      "vae_name": "krea2RealVae_v10.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "3": {
+    "inputs": {
+      "clip_name": "qwen3VL4BAbliteratedComfyui_v10_full_bf16.safetensors",
+      "type": "krea2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "6": {
+    "inputs": {
+      "unet_name": "KREA2/fasciumKREA2_exp01092026_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "13": {
+    "inputs": {
+      "prompt": "",
+      "clip": [
+        "27",
+        1
+      ],
+      "image1": [
+        "31",
+        0
+      ],
+      "image2": [
+        "32",
+        0
+      ],
+      "image3": [
+        "33",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "TextEncodeQwenImageEditPlus (Positive)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "prompt": "diptych, split screen, two panels, side by side, before and after comparison, collage, multiple images, anime, manga",
+      "clip": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "Text Encode Qwen Image Edit Plus"
+    }
+  },
+  "15": {
+    "inputs": {
+      "seed": 657539441289641,
+      "steps": 10,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "beta",
+      "denoise": 1,
+      "model": [
+        "27",
+        0
+      ],
+      "positive": [
+        "30",
+        0
+      ],
+      "negative": [
+        "14",
+        0
+      ],
+      "latent_image": [
+        "24",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "17": {
+    "inputs": {
+      "samples": [
+        "15",
+        0
+      ],
+      "vae": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "21": {
+    "inputs": {
+      "filename_prefix": "PPR1/plate_press_",
+      "images": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "24": {
+    "inputs": {
+      "width": [
+        "25",
+        0
+      ],
+      "height": [
+        "26",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "25": {
+    "inputs": {
+      "value": 1920
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "26": {
+    "inputs": {
+      "value": 1080
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "27": {
+    "inputs": {
+      "lora_01": "KREA2/L2L/realism_engine_krea2_v3.1.safetensors",
+      "strength_01": 0.75,
+      "lora_02": "KREA2/L2L/Krea2-aethernouveau-04_merged.safetensors",
+      "strength_02": 0.75,
+      "lora_03": "None",
+      "strength_03": 0.75,
+      "lora_04": "None",
+      "strength_04": 0,
+      "model": [
+        "6",
+        0
+      ],
+      "clip": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "Lora Loader Stack (rgthree)",
+    "_meta": {
+      "title": "Lora Loader Stack (rgthree)"
+    }
+  },
+  "30": {
+    "inputs": {
+      "randomize_percent": 50,
+      "auto_strength_factor": 1,
+      "strength": 20,
+      "noise_insert": "noise on beginning steps",
+      "steps_switchover_percent": 25,
+      "seed": 359917138912071,
+      "mask_starts_at": "beginning",
+      "mask_percent": 0,
+      "log_to_console": false,
+      "noise_distribution": "uniform",
+      "granularity": "values",
+      "conditioning": [
+        "35",
+        0
+      ]
+    },
+    "class_type": "KreaSeedVarianceEnhancer",
+    "_meta": {
+      "title": "Seed Variance Enhancer - Krea 2 Turbo"
+    }
+  },
+  "31": {
+    "inputs": {
+      "image": "STAGE1_ENH_ORIGP_00161_.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "34": {
+    "inputs": {
+      "pixels": [
+        "31",
+        0
+      ],
+      "vae": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "35": {
+    "inputs": {
+      "conditioning": [
+        "13",
+        0
+      ],
+      "latent": [
+        "34",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent"
+    }
+  },
+  "32": {
+    "inputs": {
+      "image": "example.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "33": {
+    "inputs": {
+      "image": "example.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  }
+}
